@@ -21,6 +21,8 @@ byte ADay, AHour, AMinute, ASecond, ABits;
 bool ADy, A12h, Apm;
 int second, minute, hour, day, month, year; //pa que float? xD
 
+
+
 //Pin usado para depertarse
 int wakePin = 2;                 // pin used for waking up
 int sleepStatus = 0;             // variable to store a request for sleep
