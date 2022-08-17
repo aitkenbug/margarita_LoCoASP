@@ -109,7 +109,7 @@ const float tabla[12] [10]={
        {2.325,2.004,1.665,1.312,0.948,0.578,0.205,-0.167,-0.534,-0.893,}};
       float FindH(int day, int month){
  //es como una tabla ineficiente, siento que en vez de programa debiera ser guardado como un array 2D en caso de que falte memoria aca se corta
-      return tabla[month][day]; //Espero que la tabla haya sido construido como mes 0= enero y dia 0 = primer dia del mes
+      return tabla[month-1][day]; //Espero que la tabla haya sido construido como dia 0 = primer dia del mes
       /*
       float h;
       
