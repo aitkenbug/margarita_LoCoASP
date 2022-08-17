@@ -9,6 +9,7 @@ Servo myservo2;
 
 //Declaracion Reloj
 DS3231 Clock;
+RTClib myRTC; //Raro... investigar como usar .now()@pp
 // Variables del reloj
 byte A1Day, A1Hour, A1Minute, A1Second, AlarmBits;
 bool A1Dy, A1h12, A1PM;
@@ -18,7 +19,7 @@ bool h12;
 bool PM;
 byte ADay, AHour, AMinute, ASecond, ABits;
 bool ADy, A12h, Apm;
-float second, minute, hour, day, month, year;
+int second, minute, hour, day, month, year; //pa que float? xD
 
 //Pin usado para depertarse
 int wakePin = 2;                 // pin used for waking up
@@ -33,20 +34,9 @@ float pi = 3.14159265;
 
 //Seguidor
 // Variables seguidor
-int x0;
-int x1;
-int x2;
-int x3;
-int x;
-int y0;
-int y1;
-int y2;
-int y3;
-int y;
-int hor;
-int ver; 
-int hor0;
-int ver0; 
+int x0;int x1;int x2;int x3;int x;
+int y0;int y1;int y2;int y3;int y;
+int hor;int ver; int hor0;int ver0; 
 
 unsigned long tiempo;
 int amp=2;
@@ -171,15 +161,11 @@ void loop()
   //////////////////////////////////////////////////  
   //PUT YOUR LATITUDE, LONGITUDE, AND TIME ZONE HERE
   // TUPPER 2007
-  float latitude = -33.458017;
-  float longitude = -70.661989;
+  float latitude = -33.458017;float longitude = -70.661989;
   // ROSSINI 10620
-  //float latitude = -33.5622523;
-  //float longitude = -70.603821799;
-  //float timezone = 0;
+  //float latitude = -33.5622523;float longitude = -70.603821799; float timezone = 0;
   // Valle Nevado
-  //float latitude = -33.44888969;
-  //float longitude = -70.6692655;
+  //float latitude = -33.44888969;//float longitude = -70.6692655;
   float timezone = 0;
 
   //////////////////////////////////////////////////  
@@ -188,15 +174,28 @@ void loop()
   Clock.checkIfAlarm(1);
   delay(1000);
 
-  //  Obtención del tiempo
+  //  Obtención del tiempo 
   Clock.getA1Time(ADay, AHour, AMinute, ASecond, ABits, ADy, A12h, Apm);  
-  
+  DateTime ahora = myRTC.now(); //Raro... investigar como funciona bien @pp
+// Variables del reloj
+  second = ahora.second();
+  minute = ahora.minute();
+  hour = ahora.hour();
+  day = ahora.day();
+  month = ahora.month();
+  year = ahora.year();
+
+// https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
+// un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
+
+  /*
   second = Clock.getSecond();
   minute = Clock.getMinute();
   hour = Clock.getHour(h12, PM);
   day = Clock.getDate();
   month = Clock.getMonth(Century);
   year = Clock.getYear();
+  */
 
   //Serial.print("20");
   //Serial.print(int(year), DEC);
@@ -367,36 +366,15 @@ void loop()
       }
 
       
-      if (comb03 >= comb12)
-      {
-        x3 = factor_s*-1;
-      }
-      else
-      {
-        x3 = factor_s*1;
-      }
+      if (comb03 >= comb12){x3 = factor_s*-1;}
+      else{x3 = factor_s*1;}
 
       x = x1 + x2 + x3;
       y = y1 + y2 + y3;
   //Agregamos el elemento integral para evitar el error en estado estaiconario
      
-      if (x == 0)
-      {
-        x = x0;  
-      }
-      else
-      {
-        x0 = x; 
-      }
-  
-      if (y == 0)
-      {
-        y = y0;
-      }
-      else
-      {
-        y0 = y;
-      }
+      if (x == 0){x = x0; }else{x0 = x;}
+      if (y == 0){y = y0;}else{y0 = y;}
 
 
 // Eliminamos cuando el valor es de 2
@@ -511,19 +489,7 @@ bool found()
       // Comparamos entradas opuesta y desacoplamos las respuestas
       // Basta que se cumpla una condición para que se justifique
       // Se usa para la busqueda aproximada del sol
-      if (abs(sensor0-sensor2)>=4)
-      {
-        return true;
-      }
-
-      else if (abs(sensor1-sensor3)>=4)
-      {
-        return true;
-      }
-      else
-      {
-        return false;
-      }
+      return abs(sensor0-sensor2)>=4||(abs(sensor1-sensor3)>=4);
 }
 int sec(int in)
 {

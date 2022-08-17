@@ -95,8 +95,7 @@
 //HERE IS THE TABLE OF NOON HOUR ANGLE VALUES. THESE VALUES GIVE THE HOUR ANGLE, IN DEGREES, OF THE SUN AT NOON (NOT SOLAR NOON)
 //WHERE LONGITUDE = 0. DAYS ARE SKIPPED TO SAVE SPACE, WHICH IS WHY THERE ARE NOT 365 NUMBERS IN THIS TABLE.
       float FindH(int day, int month){
- //es como una tabla ineficiente, siento que en vez de programa debiera ser guardado como un array 2D
-     
+ //es como una tabla ineficiente, siento que en vez de programa debiera ser guardado como un array 2D en caso de que falte memoria aca se corta
       float h;
       switch(month){
         case 1:{ float h_Array[10]={-1.038,-1.379,-1.703,-2.007,-2.289,-2.546,-2.776,-2.978,-3.151,-3.294,};h = h_Array[day];break;}
