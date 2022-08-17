@@ -29,7 +29,7 @@
 //THIS CODE TAKES THE DAY OF THE MONTH AND DOES ONE OF THREE THINGS: ADDS A DAY, SUBTRACTS A DAY, OR
 //DOES NOTHING. THIS IS DONE SO THAT LESS VALUES ARE REQUIRED FOR THE NOON HOUR ANGLE TABLE BELOW.
        int dayToArrayNum(int day){
-        return day/3-day/31;
+        return (day-1)/3-day/31;
         
         /*
          * son matematicamente equivalentes, asumiendo que day vive entre 1 y 31
