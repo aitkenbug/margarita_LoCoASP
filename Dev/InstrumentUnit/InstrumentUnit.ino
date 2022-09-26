@@ -131,6 +131,8 @@ String data() //Sensor data processing and collation.
     }
   }
   sprintf(zz, ",%s,%s,%s,%s", data1, data2, data3, data4);
+  Serial.print("Sensor data: ");
+  Serial.println(zz);
   //WARN: maybe some debugging here?
   return zz;
 }
@@ -162,6 +164,8 @@ String GPS() //GPS data parsing and collation, hugely inneficient. To be replace
       }
     }
   }
+  Serial.print("GPS data: ");
+  Serial.println(gps_data);
   return gps_data;
 }
 
