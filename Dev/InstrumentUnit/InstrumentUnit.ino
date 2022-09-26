@@ -93,7 +93,7 @@ String data() //Sensor data processing and collation.
   const char coma = ','; //WARN: is this necessary?
   int readvalue;
   int data1, data2, data3, data4;
-  String zz;
+  char zz[30];
   unsigned long tiempo;
   tiempo = millis(); //WARN: why?
   data1 = 0;
@@ -139,7 +139,7 @@ String data() //Sensor data processing and collation.
 
 String GPS() //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
 {
-  String gps_data = "Invalid data";
+  char gps_data[] = "Invalid data";
   unsigned long tiempo = millis(); //El tiempo de inicio para marcar
 
   while (millis() < tiempo + 30000) {
@@ -147,10 +147,6 @@ String GPS() //GPS data parsing and collation, hugely inneficient. To be replace
       if (gps.encode(ss.read())) {
         if (gps.location.isValid()) {
 	  // isValid checks for the complete GPRMC frame.
-          latlong = true;
-          diamesagno = true;
-          hrminseg = true;
-          alt = true;
 	  sprintf(gps_data, ",%s,%s,%s,%s,%s,%s,%s,%s", gps.location.lat(),
                                                         gps.location.lng(),
                                                         gps.date.day(),
