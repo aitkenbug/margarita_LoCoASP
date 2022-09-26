@@ -153,7 +153,7 @@ String GPS() //GPS data parsing and collation, hugely inneficient. To be replace
   hrminseg = false;
   alt = false;
 
-  tiempo = millis(); //El tiempo de incicio para marcar
+  tiempo = millis(); //El tiempo de inicio para marcar
 
   while (millis() < tiempo + 30000)
   {
