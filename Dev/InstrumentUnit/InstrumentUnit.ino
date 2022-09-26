@@ -130,122 +130,39 @@ String data() //Sensor data processing and collation.
       data4 = readvalue;
     }
   }
-  zz = coma;
-  zz += data1;
-  zz += coma;
-  zz += data2;
-  zz += coma;
-  zz += data3;
-  zz += coma;
-  zz += data4;
+  sprintf(zz, ",%s,%s,%s,%s", data1, data2, data3, data4);
   //WARN: maybe some debugging here?
   return zz;
 }
 
 String GPS() //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
 {
-  const char coma = ',';
-  String zz;
-  unsigned long tiempo;
-  boolean latlong, diamesagno, hrminseg, alt;
-  latlong = false;
-  diamesagno = false;
-  hrminseg = false;
-  alt = false;
+  String gps_data = "Invalid data";
+  unsigned long tiempo = millis(); //El tiempo de inicio para marcar
 
-  tiempo = millis(); //El tiempo de inicio para marcar
-
-  while (millis() < tiempo + 30000)
-  {
-    while (ss.available() > 0)
-    {
-      //Serial.print(F("Location: "));
-      if (gps.encode(ss.read()))
-      {
-        if (gps.location.isValid() && latlong)
-        {
+  while (millis() < tiempo + 30000) {
+    while (ss.available() > 0) {
+      if (gps.encode(ss.read())) {
+        if (gps.location.isValid()) {
+	  // isValid checks for the complete GPRMC frame.
           latlong = true;
-        }
-
-        if (gps.date.isValid())
-        {
           diamesagno = true;
-        }
-        if (gps.time.isValid())
-        {
           hrminseg = true;
-        }
-        //Serial.print(F(","));
-        if (gps.altitude.isValid())
-        {
           alt = true;
-        }
-        if (latlong && diamesagno && hrminseg && alt)
-        {
-          break;
+	  sprintf(gps_data, ",%s,%s,%s,%s,%s,%s,%s,%s", gps.location.lat(),
+                                                        gps.location.lng(),
+                                                        gps.date.day(),
+                                                        gps.date.month(),
+                                                        gps.date.year(),
+                                                        gps.time.hour(),
+                                                        gps.time.minute(),
+                                                        gps.time.second());
+	  break;
         }
       }
     }
   }
-  if (latlong)
-  {
-    zz = coma;
-    zz += gps.location.lat();
-    zz += coma;
-    zz += gps.location.lng();
-  }
-  else
-  {
-    zz = coma;
-    zz += coma;
-  }
-
-  //, Dia, Mes, Agno
-  if (diamesagno)
-  {
-    zz += coma;
-    zz += gps.date.day();
-    zz += coma;
-    zz += gps.date.month();
-    zz += coma;
-    zz += gps.date.year();
-
-  }
-  else
-  {
-    zz += coma;
-    zz += coma;
-    zz += coma;
-  }
-
-  //, Hora, Minuto, Segundo
-  if (hrminseg)
-  {
-    zz += coma;
-    zz += gps.time.hour();
-    zz += coma;
-    zz += gps.time.minute();
-    zz += coma;
-    zz += gps.time.second();
-  }
-  else
-  {
-    zz += coma;
-    zz += coma;
-    zz += coma;
-  }
-
-  //, Altura_GPS
-  if (alt)
-  {
-    zz += coma;
-    zz += gps.altitude.meters();
-  }
-  else
-  {
-    zz += coma;
-  }
-  return zz;
+  return gps_data;
 }
 
 
