@@ -2,7 +2,7 @@
 #include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
 
 static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
-char gps_data[40] = {0};
+char gps_data[50] = {0};
 
 TinyGPSPlus gps; // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
@@ -25,9 +25,8 @@ void loop() {
 
 String GPS() {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    char lat_str[8];
-    char lng_str[8];
-    float lat, lng;
+    char lat_str[8], lng_str[8], alt_str[8];
+    float lat = 0.0, lng = 0.0, alt = 0.0;
     memset(&gps_data[0], 0, sizeof(gps_data));
     unsigned long tiempo = millis(); //El tiempo de inicio para marcar
     while (millis() < tiempo + 30000) {
@@ -37,16 +36,25 @@ String GPS() {
                 // isValid checks for the complete GPRMC frame.
                     lat = gps.location.lat();
                     lng = gps.location.lng();
+                    alt = gps.altitude.meters();
                     dtostrf(abs(lat), 7, 4, lat_str);
-                    dtostrf(abs(lng), 7, 4, lng_str);
-                    sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d", lat_str, 'S'-5*(lat > 0),
-                                                                        lng_str, 'W'-18*(lng > 0),
-                                                                        gps.date.day(),
-                                                                        gps.date.month(),
-                                                                        gps.date.year(),
-                                                                        gps.time.hour(),
-                                                                        gps.time.minute(),
-                                                                        gps.time.second());
+                    if (abs(lng) >= 100.0)
+                        dtostrf(abs(lng), 8, 4, lng_str);
+                    else
+                        dtostrf(abs(lng), 7, 4, lng_str);
+                    if (alt >= 1000)
+                        dtostrf(alt, 7, 2, alt_str);
+                    else
+                        dtostrf(alt, 6, 2, alt_str);
+                    sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s", lat_str, 'S'-5*(lat > 0),
+                                                                           lng_str, 'W'-18*(lng > 0),
+                                                                           gps.date.day(),
+                                                                           gps.date.month(),
+                                                                           gps.date.year(),
+                                                                           gps.time.hour(),
+                                                                           gps.time.minute(),
+                                                                           gps.time.second(),
+                                                                           alt_str);
                     break;
                 }
             }
@@ -58,9 +66,8 @@ String GPS() {
 }
 
 void test_GPS() {
-    char lat_str[8];
-    char lng_str[8];
-    float lat, lng;
+    char lat_str[8], lng_str[8], alt_str[8];
+    float lat = 0.0, lng = 0.0, alt = 0.0;
     Serial.println(F("Testing the GPS string generator: "));
     memset(&gps_data[0], 0, sizeof(gps_data));
     // A sample NMEA stream.
@@ -75,18 +82,26 @@ void test_GPS() {
         if (gps.encode(*gpsStream++)) {
             lat = gps.location.lat();
             lng = gps.location.lng();
+            alt = gps.altitude.meters();
             dtostrf(abs(lat), 7, 4, lat_str);
-            dtostrf(abs(lng), 7, 4, lng_str);
-            sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d", lat_str, 'S'-5*(lat > 0),
-                                                                lng_str, 'W'-18*(lng > 0),
-                                                                gps.date.day(),
-                                                                gps.date.month(),
-                                                                gps.date.year(),
-                                                                gps.time.hour(),
-                                                                gps.time.minute(),
-                                                                gps.time.second());
+            if (abs(lng) >= 100.0)
+                dtostrf(abs(lng), 8, 4, lng_str);
+            else
+                dtostrf(abs(lng), 7, 4, lng_str);
+            if (alt >= 1000)
+                dtostrf(alt, 7, 2, alt_str);
+            else
+                dtostrf(alt, 6, 2, alt_str);
+            sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s", lat_str, 'S'-5*(lat > 0),
+                                                                   lng_str, 'W'-18*(lng > 0),
+                                                                   gps.date.day(),
+                                                                   gps.date.month(),
+                                                                   gps.date.year(),
+                                                                   gps.time.hour(),
+                                                                   gps.time.minute(),
+                                                                   gps.time.second(),
+                                                                   alt_str);
             Serial.println(gps_data);
-
         }
     }
 }
