@@ -10,7 +10,7 @@
 // Space and Planetary Exploration Laboratory, Faculty of Physical and Matemathical Sciences, University of Chile
 // ------------------------------------------------------------------------------------------------------------------
 // First generation developement by Cristobal Garrido and MCI Electronics
-// Second generation developement by Benjamín Santelices, Vicente Aitken, and José Ferrada
+// Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
 // ------------------------------------------------------------------------------------------------------------------
 // INSTRUMENT.INO > Photometer Instrument Unit
 // Firmware for Instrument Unit - Arduino Uno
