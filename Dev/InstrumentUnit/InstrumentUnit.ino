@@ -24,9 +24,9 @@
 #include <SD.h> // SD Card Library
 #include <SPI.h> // Hardware SPI library for MCP3204 ADC.
 
-char ID[] = "007"; // Instrument ID for tracking, to be ported on config.h
+char ID[4] = "007"; // Instrument ID for tracking, to be ported on config.h
 static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
-char dato; // ?
+char gps_data[40] = {0};
 
 SFE_BMP180 pressure; // BMP180 object
 TinyGPSPlus gps; // GPS object.
@@ -41,14 +41,14 @@ void setup() {
     String zz, zz2, zz3, zz4;
     pinMode(A2,INPUT); //stop trigger from Tracker Unit init
     //debug UART, GPS softUART, BMP init
-    Serial.begin(115200); 
+    Serial.begin(115200);
+    delay(2000);
+    Serial.println(F("Begin."));
     ss.begin(GPSBaud); 
-    pressure.begin(); 
-
+    pressure.begin();
     //---MEASURING STARTS HERE---
     zz = ID;
-    Serial.println("Init");
-    while (digitalRead(A2)== 0) {
+    while (digitalRead(A2) == 0) {
         //do nothing while A2 is low
         //WARN: isn't A2 being checked twice? here and on data() function. possible efficiency boost here.
     }
@@ -88,12 +88,9 @@ void loop() {//nothing happens here.
 
 String data() {
     //Sensor data processing and collation.
-    const char coma = ','; //WARN: is this necessary?
     int readvalue;
     int data1, data2, data3, data4;
     char zz[30];
-    unsigned long tiempo;
-    tiempo = millis(); //WARN: why?
     data1 = 0;
     data2 = 0;
     data3 = 0;
@@ -120,8 +117,8 @@ String data() {
             data4 = readvalue;
         }
     }
-    sprintf(zz, ",%s,%s,%s,%s", data1, data2, data3, data4);
-    Serial.print("Sensor data: ");
+    sprintf(zz, ",%d,%d,%d,%d", data1, data2, data3, data4);
+    Serial.print(F("Sensor data: "));
     Serial.println(zz);
     //WARN: maybe some debugging here?
     return zz;
@@ -129,28 +126,34 @@ String data() {
 
 String GPS() {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    char gps_data[] = "Invalid data";
+    char lat_str[8];
+    char lng_str[8];
+    float lat, lng;
+    memset(&gps_data[0], 0, sizeof(gps_data));
     unsigned long tiempo = millis(); //El tiempo de inicio para marcar
-
     while (millis() < tiempo + 30000) {
         while (ss.available() > 0) {
             if (gps.encode(ss.read())) {
                 if (gps.location.isValid()) {
 	            // isValid checks for the complete GPRMC frame.
-                    sprintf(gps_data, ",%s,%s,%s,%s,%s,%s,%s,%s", gps.location.lat(),
-                                                                  gps.location.lng(),
-                                                                  gps.date.day(),
-                                                                  gps.date.month(),
-                                                                  gps.date.year(),
-                                                                  gps.time.hour(),
-                                                                  gps.time.minute(),
-                                                                  gps.time.second());
-	            break;
+                    lat = gps.location.lat();
+                    lng = gps.location.lng();
+                    dtostrf(abs(lat), 7, 4, lat_str);
+                    dtostrf(abs(lng), 7, 4, lng_str);
+                    sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d", lat_str, 'S'-5*(lat > 0),
+                                                                        lng_str, 'W'-18*(lng > 0),
+                                                                        gps.date.day(),
+                                                                        gps.date.month(),
+                                                                        gps.date.year(),
+                                                                        gps.time.hour(),
+                                                                        gps.time.minute(),
+                                                                        gps.time.second());
+	                break;
                 }
             }
         }
     }
-    Serial.print("GPS data: ");
+    Serial.print(F("GPS data: "));
     Serial.println(gps_data);
     return gps_data;
 }
@@ -161,7 +164,7 @@ String BMP() {
     char status;
     const char coma = ',';
     String zz;
-    double T, P, a;
+    double T = 0.0, P = 0.0, a = 0.0;
     //,Temperatura
     status = pressure.startTemperature();
     if (status != 0) {
