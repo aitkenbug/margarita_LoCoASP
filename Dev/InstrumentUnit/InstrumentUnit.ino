@@ -25,8 +25,9 @@
 #include <SPI.h> // Hardware SPI library for MCP3204 ADC.
 
 char ID[4] = "007"; // Instrument ID for tracking, to be ported on config.h
-static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
+char bmp_data[30] = {0};
 char gps_data[50] = {0};
+static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 
 SFE_BMP180 pressure; // BMP180 object
 TinyGPSPlus gps; // GPS object.
@@ -166,46 +167,38 @@ String GPS() {
     return gps_data;
 }
 
-
 String BMP() {
     //BMP180 data gathering. IC out of production, would be wise to replace.
-    char status;
-    const char coma = ',';
-    String zz;
-    double T = 0.0, P = 0.0, a = 0.0;
-    //,Temperatura
-    status = pressure.startTemperature();
-    if (status != 0) {
-        delay(status);
-        status = pressure.getTemperature(T);
-    }
-    if (status != 0) {
-        zz = coma;
-        zz += T;
-        //, Presion, Altura_BMP
-        status = pressure.startPressure(3);
-    }
-    else {
-        zz = coma;
-    }
-    if (status != 0) {
-        delay(status);
-        status = pressure.getPressure(P, T);
-        if (status != 0) {
-            const int P0 = 1013;
-            zz += coma;
-            zz += P;
+    char temp_str[6], pres_str[7], alt_str[8];
+    double temp = 0.0, pres = 0.0, alt = 0.0;
+    uint8_t wait = 0;
 
-            a = pressure.altitude(P, P0);
-            zz += coma;
-            zz += a;
-        }
-    }
-    else {
-        zz += coma;
-        zz += coma;
-    }
-    return zz;
+    memset(&bmp_data[0], 0, sizeof(bmp_data));
+    wait = pressure.startTemperature();
+    delay(wait);
+
+    if (!pressure.getTemperature(temp))
+        temp=0.0;
+    wait = pressure.startPressure(3);
+    delay(wait);
+
+    if (!pressure.getPressure(pres, temp))
+        pres = 0.0;
+    alt = pressure.altitude(pres, 1013); // P0 = 1013
+
+    if (abs(temp) < 10)
+        dtostrf(temp, 4, 2, temp_str);
+    else
+        dtostrf(temp, 5, 2, temp_str);
+    dtostrf(pres, 6, 2, pres_str);
+    if (alt >= 1000.0)
+        dtostrf(alt, 7, 2, alt_str);
+    else
+        dtostrf(alt, 6, 2, alt_str);
+    sprintf(bmp_data, ",%s,%s,%s", temp_str, pres_str, alt_str);
+    Serial.print(F("BMP data: "));
+    Serial.println(bmp_data);
+    return bmp_data;
 }
 
 int read_ADC(int channel) {
