@@ -33,20 +33,19 @@ SFE_BMP180 pressure; // BMP180 object
 TinyGPSPlus gps; // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
-
 #define CS_ADC 4 // ADC chip select.
 #define CS_SD 8  //SD chip select. Matches hardware SPI bus implementation on 328P.
-
 
 void setup() {
     String zz, zz2, zz3, zz4;
     pinMode(A2,INPUT); //stop trigger from Tracker Unit init
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
-    delay(2000);
+    delay(1500);
     Serial.println(F("Begin."));
     ss.begin(GPSBaud); 
     pressure.begin();
+
     //---MEASURING STARTS HERE---
     zz = ID;
     while (digitalRead(A2) == 0) {
@@ -89,13 +88,8 @@ void loop() {//nothing happens here.
 
 String data() {
     //Sensor data processing and collation.
-    int readvalue;
-    int data1, data2, data3, data4;
+    int readvalue = 0, data1 = 0, data2 = 0, data3 = 0, data4 = 0;
     char zz[30];
-    data1 = 0;
-    data2 = 0;
-    data3 = 0;
-    data4 = 0;
     //Sensor readout, keep highest value of each sensor.
     while (digitalRead(A2)) {//Second check of A2 (?)
         readvalue = read_ADC(1);
@@ -203,8 +197,8 @@ String BMP() {
 
 int read_ADC(int channel) {
     //ADC SPI interface
-    int adcValue = 0;
     const int byte8 = 0x06; //setup byte
+    int adcValue = 0;
     int byte16 = (channel - 1) << 14; //bitshifted channel for second block.
 
     digitalWrite(CS_ADC, LOW); //select MCP3204
