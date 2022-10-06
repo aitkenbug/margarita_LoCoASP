@@ -11,14 +11,14 @@ Servo myservo2;
 DS3231 Clock;
 RTClib myRTC; //Raro... investigar como usar .now()@pp
 // Variables del reloj
-byte A1Day, A1Hour, A1Minute, A1Second, AlarmBits;
 bool A1Dy, A1h12, A1PM;
 
 bool Century = false;
 bool h12;
 bool PM;
-byte ADay, AHour, AMinute, ASecond, ABits;
 bool ADy, A12h, Apm;
+byte A1Day, A1Hour, A1Minute, A1Second, AlarmBits;
+byte ADay, AHour, AMinute, ASecond, ABits;
 int second, minute, hour, day, month, year; //pa que float? xD
 int daynum[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 
@@ -37,211 +37,156 @@ float pi = 3.14159265;
 
 //Seguidor
 // Variables seguidor
-int x0;int x1;int x2;int x3;int x;
-int y0;int y1;int y2;int y3;int y;
-int hor;int ver; int hor0;int ver0; 
+int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
+int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
+int hor = 0, ver = 0, hor0 = 0, ver0 = 0; 
 
-unsigned long tiempo;
-int amp=2;
+unsigned long tiempo = 0;
 bool convergencia = true;
+float tupper_lat = -33.458017, tupper_lng = -70.661989;
 
 
-void wakeUpNow()        // here the interrupt is handled after wakeup
-{
-  // execute code here after wake-up before returning to the loop() function
-  // timers and code using timers (serial.print and more...) will not work here.
-  // we don't really need to execute any special functions here, since we
-  // just want the thing to wake up
+void wakeUpNow() {       // here the interrupt is handled after wakeup
+    // execute code here after wake-up before returning to the loop() function
+    // timers and code using timers (serial.print and more...) will not work here.
+    // we don't really need to execute any special functions here, since we
+    // just want the thing to wake up
 }
 
-void setup()
-{
-  // put your setup code here, to run once:
-  pinMode(wakePin, INPUT);
-  Wire.begin();
-  Serial.begin(9600);
+void setup() {
+    // put your setup code here, to run once:
+    pinMode(wakePin, INPUT);
+    Wire.begin();
+    Serial.begin(115200);
 
-  A1Day = byte(14);
-  A1Hour = byte(0);
-  A1Minute = byte(30);  // si coloca 0 la alarma se activara en 10, si no entiende lea la biblia
-  A1Second = byte(0);
-  AlarmBits = B11100;
-  A1Dy = false;
-  A1h12 = false;
-  A1PM = false;
- 
-  //Serial.begin(9600);
-  Clock.setA1Time(A1Day, A1Hour, A1Minute, A1Second, AlarmBits, A1Dy, A1h12, A1PM);
-  Clock.turnOnAlarm(1);
-  Serial.println("A");
+    A1Day = byte(14);
+    A1Hour = byte(0);
+    A1Minute = byte(30);  // si coloca 0 la alarma se activara en 10, si no entiende lea la biblia
+    A1Second = byte(0);
+    AlarmBits = B11100;
+    A1Dy = false;
+    A1h12 = false;
+    A1PM = false;
 
-  /* Now it is time to enable an interrupt. In the function call
-     attachInterrupt(A, B, C)
-     A   can be either 0 or 1 for interrupts on pin 2 or 3.
+    Clock.setA1Time(A1Day, A1Hour, A1Minute, A1Second, AlarmBits, A1Dy, A1h12, A1PM);
+    Clock.turnOnAlarm(1);
+    Serial.println("Attaching servos");
+    myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    myservo2.attach(10);
 
-     B   Name of a function you want to execute while in interrupt A.
+    /* Now it is time to enable an interrupt. In the function call
+       attachInterrupt(A, B, C)
+       A   can be either 0 or 1 for interrupts on pin 2 or 3.
 
-     C   Trigger mode of the interrupt pin. can be:
-                 LOW        a low level trigger
-                 CHANGE     a change in level trigger
-                 RISING     a rising edge of a level trigger
-                 FALLING    a falling edge of a level trigger
+       B   Name of a function you want to execute while in interrupt A.
 
-     In all but the IDLE sleep modes only LOW can be used.
-  */
+       C   Trigger mode of the interrupt pin. can be:
+                   LOW        a low level trigger
+                   CHANGE     a change in level trigger
+                   RISING     a rising edge of a level trigger
+                   FALLING    a falling edge of a level trigger
 
-  //attachInterrupt(1, wakeUpNow, LOW); // use interrupt 1 (pin 3) and run function
-  // wakeUpNow when pin 3 gets LOW
+       In all but the IDLE sleep modes only LOW can be used.
+    */
+
+    //attachInterrupt(1, wakeUpNow, LOW); // use interrupt 1 (pin 3) and run function
+    // wakeUpNow when pin 3 gets LOW
 }
 
-void sleepNow()         // here we put the arduino to sleep
-{
-  /* Now is the time to set the sleep mode. In the Atmega8 datasheet
-     http://www.atmel.com/dyn/resources/prod_documents/doc2486.pdf on page 35
-     there is a list of sleep modes which explains which clocks and
-     wake up sources are available in which sleep mode.
+void sleepNow() {        // here we put the arduino to sleep
+    /* Now is the time to set the sleep mode. In the Atmega8 datasheet
+       http://www.atmel.com/dyn/resources/prod_documents/doc2486.pdf on page 35
+       there is a list of sleep modes which explains which clocks and
+       wake up sources are available in which sleep mode.
 
-     In the avr/sleep.h file, the call names of these sleep modes are to be found:
+       In the avr/sleep.h file, the call names of these sleep modes are to be found:
 
-     The 5 different modes are:
-         SLEEP_MODE_IDLE         -the least power savings
-         SLEEP_MODE_ADC
-         SLEEP_MODE_PWR_SAVE
-         SLEEP_MODE_STANDBY
-         SLEEP_MODE_PWR_DOWN     -the most power savings
+       The 5 different modes are:
+           SLEEP_MODE_IDLE         -the least power savings
+           SLEEP_MODE_ADC
+           SLEEP_MODE_PWR_SAVE
+           SLEEP_MODE_STANDBY
+           SLEEP_MODE_PWR_DOWN     -the most power savings
 
-     For now, we want as much power savings as possible, so we
-     choose the according
-     sleep mode: SLEEP_MODE_PWR_DOWN
+       For now, we want as much power savings as possible, so we
+       choose the according
+       sleep mode: SLEEP_MODE_PWR_DOWN
 
-  */
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
+    */
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
 
-  sleep_enable();          // enables the sleep bit in the mcucr register
-  // so sleep is possible. just a safety pin
+    sleep_enable();          // enables the sleep bit in the mcucr register
+    // so sleep is possible. just a safety pin
 
-  /* Now it is time to enable an interrupt. We do it here so an
-     accidentally pushed interrupt button doesn't interrupt
-     our running program. if you want to be able to run
-     interrupt code besides the sleep function, place it in
-     setup() for example.
+    /* Now it is time to enable an interrupt. We do it here so an
+       accidentally pushed interrupt button doesn't interrupt
+       our running program. if you want to be able to run
+       interrupt code besides the sleep function, place it in
+       setup() for example.
 
-     In the function call attachInterrupt(A, B, C)
-     A   can be either 0 or 1 for interrupts on pin 2 or 3.
+       In the function call attachInterrupt(A, B, C)
+       A   can be either 0 or 1 for interrupts on pin 2 or 3.
 
-     B   Name of a function you want to execute at interrupt for A.
+       B   Name of a function you want to execute at interrupt for A.
 
-     C   Trigger mode of the interrupt pin. can be:
-                 LOW        a low level triggers
-                 CHANGE     a change in level triggers
-                 RISING     a rising edge of a level triggers
-                 FALLING    a falling edge of a level triggers
+       C   Trigger mode of the interrupt pin. can be:
+                   LOW        a low level triggers
+                   CHANGE     a change in level triggers
+                   RISING     a rising edge of a level triggers
+                   FALLING    a falling edge of a level triggers
 
-     In all but the IDLE sleep modes only LOW can be used.
-  */
+       In all but the IDLE sleep modes only LOW can be used.
+    */
 
-  attachInterrupt(1, wakeUpNow, LOW); // use interrupt 1 (pin 3) and run function
-  // wakeUpNow when pin 3 gets LOW
+    attachInterrupt(1, wakeUpNow, LOW); // use interrupt 1 (pin 3) and run function
+    // wakeUpNow when pin 3 gets LOW
 
-  sleep_mode();            // here the device is actually put to sleep!!
-  // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+    sleep_mode();            // here the device is actually put to sleep!!
+    // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
 
-  sleep_disable();         // first thing after waking from sleep:
-  // disable sleep...
-  detachInterrupt(1);      // disables interrupt 1 on pin 3 so the
-  // wakeUpNow code will not be executed
-  // during normal running time.
+    sleep_disable();         // first thing after waking from sleep:
+    // disable sleep...
+    detachInterrupt(1);      // disables interrupt 1 on pin 3 so the
+    // wakeUpNow code will not be executed
+    // during normal running time.
 }
 
-void loop()
-{
-  float delta;
-  float h;
-  float altitude;
-  float azimuth;
-  float correctaz;
-  float correctal;
-  int factor_s = 1;
+void loop() {
+    //////////////////////////////////////////////////  
+    //PUT YOUR LATITUDE, LONGITUDE, AND TIME ZONE HERE
+    // TUPPER 2007
+    //float latitude = -33.458017;float longitude = -70.661989;
+    // ROSSINI 10620
+    //float latitude = -33.5622523;float longitude = -70.603821799; float timezone = 0;
+    // Valle Nevado
+    //float latitude = -33.44888969;//float longitude = -70.6692655;
+    track_the_sun(tupper_lat, tupper_lng);
+}
 
-  //////////////////////////////////////////////////  
-  //PUT YOUR LATITUDE, LONGITUDE, AND TIME ZONE HERE
-  // TUPPER 2007
-  float latitude = -33.458017;float longitude = -70.661989;
-  // ROSSINI 10620
-  //float latitude = -33.5622523;float longitude = -70.603821799; float timezone = 0;
-  // Valle Nevado
-  //float latitude = -33.44888969;//float longitude = -70.6692655;
-  float timezone = 0;
-
-  //////////////////////////////////////////////////  
-  //codigo mágico que pone en high la alarma
-  //Revision precencia de alarma
-  Serial.println("Loop Start");
-  Clock.checkIfAlarm(1);
-  Serial.println("Alarm Check");
-  delay(1000);
-  
-  Serial.println("delay1");
-
-  //  Obtención del tiempo 
-  Clock.getA1Time(ADay, AHour, AMinute, ASecond, ABits, ADy, A12h, Apm);
-  Serial.println("getA1Time");
-  DateTime ahora = myRTC.now(); //Raro... investigar como funciona bien @pp
-  Serial.println("myRTC");
-// Variables del reloj
-  second = ahora.second();
-  minute = ahora.minute();
-  hour = ahora.hour();
-  day = ahora.day();
-  month = ahora.month();
-  year = ahora.year();
-
-// https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
-// un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
-
-  /*
-  second = Clock.getSecond();
-  minute = Clock.getMinute();
-  hour = Clock.getHour(h12, PM);
-  day = Clock.getDate();
-  month = Clock.getMonth(Century);
-  year = Clock.getYear();
-  */
-
-  //Serial.print("20");
-  //Serial.print(int(year), DEC);
-  //Serial.print('-');
-  //Serial.print(int(month), DEC);
-  //Serial.print('-');
-  //Serial.print(int(day), DEC);
-  //Serial.print(' ');
-  //Serial.print(int(hour), DEC);
-  //Serial.print(':');
-  //Serial.print(int(minute), DEC);
-  //Serial.print(':');
-  //Serial.println(int(second), DEC);
-  delay(100);
-
-//START OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
-  //for (int hour=0; hour <= 23; hour++) {
-    Serial.println("Sun Check Start");
-    latitude = latitude * pi/180;
+float get_sun_position(float latitude, float longitude, int month, int day) {
+    float azimuth = 0.0, delta = 0.0, h = 0.0, elevation = 0.0, timezone = 0.0;
+    float two_pi = 2*pi;
+    float rad2deg = 180/pi;
+    float deg2rad = pi/180;
+    latitude = latitude * deg2rad;
+    float sin_lat = sin(latitude);
+    float cos_lat = cos(latitude);
     float n = daynum[month-1] + day;//NUMBER OF DAYS SINCE THE START OF THE YEAR. 
-    delta = .409279 * sin(2 * pi * ((284 + n)/365.25));//SUN'S DECLINATION.
+    delta = .409279 * sin(two_pi * ((284 + n)/365.25));//SUN'S DECLINATION.
+    float sin_delta = sin(delta);
+    float cos_delta = cos(delta);
     day = dayToArrayNum(day);//TAKES THE CURRENT DAY OF THE MONTH AND CHANGES IT TO A LOOK UP VALUE ON THE HOUR ANGLE TABLE.
-    h = (FindH(day,month)) + longitude + (timezone * -1 * 15);//FINDS THE NOON HOUR ANGLE ON THE TABLE AND MODIFIES IT FOR THE USER'S OWN LOCATION AND TIME ZONE.
-    h = ((((hour + minute/60) - 12) * 15) + h)*pi/180;//FURTHER MODIFIES THE NOON HOUR ANGLE OF THE CURRENT DAY AND TURNS IT INTO THE HOUR ANGLE FOR THE CURRENT HOUR AND MINUTE.
-    altitude = (asin(sin(latitude) * sin(delta) + cos(latitude) * cos(delta) * cos(h)))*180/pi;//FINDS THE SUN'S ALTITUDE.
-    azimuth = ((atan2((sin(h)),((cos(h) * sin(latitude)) - tan(delta) * cos(latitude)))) + (northOrSouth*pi/180)) *180/pi;//FINDS THE SUN'S AZIMUTH.
+    h = (FindH(day,month)) + longitude + (timezone * -15);//FINDS THE NOON HOUR ANGLE ON THE TABLE AND MODIFIES IT FOR THE USER'S OWN LOCATION AND TIME ZONE.
+    h = ((((hour + minute/60) - 12) * 15) + h)*deg2rad;//FURTHER MODIFIES THE NOON HOUR ANGLE OF THE CURRENT DAY AND TURNS IT INTO THE HOUR ANGLE FOR THE CURRENT HOUR AND MINUTE.
+    float cos_h = cos(h);
+    elevation = (asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h))*rad2deg;//FINDS THE SUN'S ALTITUDE.
+    azimuth = ((atan2((sin(h)),((cos_h * sin_lat) - sin_delta/cos_delta * cos_lat))) + (northOrSouth*deg2rad)) *rad2deg;//FINDS THE SUN'S AZIMUTH.
     //azimuth = asin((-sin(h)*cos(delta))/sin(altitude));
     //azimuth = acos((sin(delta) - cos(altitude*pi/180)*sin(latitude))/(sin(altitude*pi/180)*cos(latitude)));
-    Serial.print("Hour: ");
-
-    Serial.print(hour);
     Serial.print(" Azimuth: ");
     Serial.print(azimuth);
     Serial.print(" Elevation: ");
-    Serial.print(altitude);
+    Serial.print(elevation);
     Serial.print(" Delta: ");
     Serial.print(delta);
     Serial.print(" h: ");
@@ -250,297 +195,279 @@ void loop()
     Serial.print(n);
     Serial.print(" month: ");
     Serial.print(month);
-    Serial.print(" danum: ");
+    Serial.print(" daynum: ");
     Serial.println(daynum[month-1]);
+    return azimuth, elevation;
+}
 
-  //}
-  //END OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
-  //Serial.println(azimuth);
-  //Serial.println(altitude);
+void track_the_sun(float latitude, float longitude) {
+    float azimuth = 0.0, elevation = 0.0;
+    float correctaz = 0.0, correctel = 0.0;
+    int sensor0 = 0, sensor1 = 0, sensor2 = 0, sensor3 = 0;
+    int suma = 0, comb01 = 0, comb32 = 0, comb03 = 0, comb12 = 0;
+    int factor_s = 1;
+    //////////////////////////////////////////////////  
+    //codigo mágico que pone en high la alarma
+    //Revision precencia de alarma
+    Serial.println("Loop Start");
+    Clock.checkIfAlarm(1);
+    Serial.println("Alarm Check");
+    delay(1000);
+
+    Serial.println("delay1");
+
+    //  Obtención del tiempo 
+    Clock.getA1Time(ADay, AHour, AMinute, ASecond, ABits, ADy, A12h, Apm);
+    Serial.println("getA1Time");
+    DateTime ahora = myRTC.now(); //Raro... investigar como funciona bien @pp
+    Serial.println("myRTC");
+    // Variables del reloj
+    second = ahora.second();
+    minute = ahora.minute();
+    hour = ahora.hour();
+    day = ahora.day();
+    month = ahora.month();
+    year = ahora.year();
+
+    // https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
+    // un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
+    delay(100);
+
+    //START OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
+    //for (int hour=0; hour <= 23; hour++) {
+    Serial.println("Sun Check Start");
+    Serial.print("Hour: ");
+    Serial.print(hour);
+    azimuth, elevation = get_sun_position(latitude, longitude, month, day);
+
+    //}
+    //END OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
   
-  if ((azimuth >= 0) and (azimuth <= 90))
-  {
-    correctaz = int(90 - azimuth);
-    correctal = int(altitude);
-  }
-  else if ((azimuth > 90) and (azimuth <= 180))
-  {
-    correctaz = int(270- azimuth);
-    correctal = int(180-altitude);
-    factor_s = -1;
-  }
-    else if ((azimuth > 180) and (azimuth < 270))
-  {
-    correctaz = int(270-azimuth);
-    correctal = int(180-altitude);
-    factor_s = -1;
-  }
-  else
-  {
-    correctaz = int(450-azimuth);
-    correctal = altitude;
-  }
+    if ((azimuth >= 0) && (azimuth <= 90)) {
+        correctaz = int(90 - azimuth);
+        correctel = int(elevation);
+    }
+    else if (((azimuth > 90) && (azimuth <= 180)) || ((azimuth > 180) and (azimuth < 270))) {
+        correctaz = int(270 - azimuth);
+        correctel = int(180 - elevation);
+        factor_s = -1;
+    }
+    else {
+        correctaz = int(450-azimuth);
+        correctel = elevation;
+    }
 
-  myservo1.writeMicroseconds(sec(int(correctaz)));
-  myservo2.writeMicroseconds(sec(int(correctal)));
-  Serial.println("Rough position calculated");
-  delay(3000);
-  
-  hor = int(correctaz);
-  ver = int(correctal);
-  hor0 = int(correctaz);
-  ver0 = int(correctal);
-  delay(100);
-  Serial.println(ver0);
+    myservo1.writeMicroseconds(sec(int(correctaz)));
+    myservo2.writeMicroseconds(sec(int(correctel)));
+    Serial.println("Rough position calculated");
+    delay(3000);
 
-  // Programacion proximo reinicio
-  A1Minute = A1Minute + byte(5);
-  if (A1Minute >= byte(60))
-  {
-    A1Minute = A1Minute - byte(60);
-  }
-  Serial.println("Next alarm calculated");
-  
-  delay(100);
-  //Serial.println(A1Minute);
-  delay(100);
-  //Serial.println("Proximo despertar en 10 minutos");
-  delay(100);
+    hor = int(correctaz);
+    ver = int(correctel);
+    hor0 = int(correctaz);
+    ver0 = int(correctel);
+    delay(100);
+    Serial.println(ver0);
 
-  // Seteo de la alarma próximo reinicio
-  Clock.setA1Time(A1Day, A1Hour, A1Minute, A1Second, AlarmBits, A1Dy, A1h12, A1PM);
-  //Clock.turnOffAlarm(1);
-  //Clock.turnOnAlarm(1);
-  //Serial.println("Alarma activada");
-  delay(100);
-  Serial.println("Alarm set, starting peripherals");
+    // Programacion proximo reinicio
+    A1Minute = A1Minute + byte(5);
+    if (A1Minute >= byte(60)) {
+        A1Minute = A1Minute - byte(60);
+    }
+    Serial.println("Next alarm calculated");
+
+    delay(100);
+    //Serial.println(A1Minute);
+    delay(100);
+    //Serial.println("Proximo despertar en 10 minutos");
+    delay(100);
+
+    // Seteo de la alarma próximo reinicio
+    Clock.setA1Time(A1Day, A1Hour, A1Minute, A1Second, AlarmBits, A1Dy, A1h12, A1PM);
+    //Clock.turnOffAlarm(1);
+    //Clock.turnOnAlarm(1);
+    //Serial.println("Alarma activada");
+    delay(100);
+    Serial.println("Alarm set, starting peripherals");
 //********************************************************************************************************************************************
 //CODIGO DEL SEGUIDOR AQUI
 //********************************************************************************************************************************************
-  // Iniciamos las conexiones de energia a los motores, arduino uno y shield M2M
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(7, OUTPUT);
-  pinMode(8, OUTPUT);
-  pinMode(13, OUTPUT);
-  
-  //Pin de conexion con arduino uno
-  pinMode(2, OUTPUT);
+    // Iniciamos las conexiones de energia a los motores, arduino uno y shield M2M
+    /*
+    pinMode(4, OUTPUT);
+    pinMode(5, OUTPUT);
+    pinMode(6, OUTPUT);
+    pinMode(7, OUTPUT);
+    pinMode(8, OUTPUT);
+    pinMode(13, OUTPUT);
+    */
+    DDRD |= B11110000; // Sets Ports 4, 5, 6 and 7 as OUTPUT.
+    DDRB |= B00100001; // Sets Ports 8 and 13 as OUTPUT.
+    //Pin de conexion con arduino uno
+    pinMode(2, OUTPUT);
 
-  Serial.println(altitude);
+    Serial.println(elevation);
 
-  if (altitude >= 7)
-  {
-  digitalWrite(4, HIGH); // Desconexion Motores
-  digitalWrite(5, HIGH); // Motor 1
-  digitalWrite(6, HIGH); // Motor 2
-  digitalWrite(7, HIGH); // Desconexion arduino UNO y M2M
-  digitalWrite(8, HIGH); //Arduino UNO
-  digitalWrite(13,HIGH); // M2M shield
-  Serial.println("Attaching servos");
-  
-  //Serial.begin(115200);
-  
-  myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
-  myservo2.attach(10);
-  x0 = 1; // Inicializamos el elemento derivativo
-  y0 = 1;
-  tiempo = millis();
-  Serial.println("Starting Tracker");
-  
-  int a = 6;
-  bool test_found = false;
+    if (elevation >= 7) {
+        /*
+        digitalWrite(4, HIGH); // Desconexion Motores
+        digitalWrite(5, HIGH); // Motor 1
+        digitalWrite(6, HIGH); // Motor 2
+        digitalWrite(7, HIGH); // Desconexion arduino UNO y M2M
+        digitalWrite(8, HIGH); // Arduino UNO
+        digitalWrite(13,HIGH); // M2M shield
+        */
+        PORTD |= B11110000;
+        PORTB |= B00100001;
+        x0 = 1; // Inicializamos el elemento derivativo
+        y0 = 1;
+        tiempo = millis();
+        Serial.println("Starting Tracker");
 
-    convergencia = true;
-    //Serial.println(millis());
-    //Serial.println(tiempo+150000); 
-    while(millis() < tiempo + 150000)
-    {
-      // Lectura de los sensores:
-      int sensor0 = analogRead(A0);
-      delay(1);
-      int sensor1 = analogRead(A1);
-      delay(1);
-      int sensor2 = analogRead(A2);
-      delay(1);
-      int sensor3 = analogRead(A3);
-      delay(1);
-      
-      int suma = sensor0 + sensor1 + sensor2 + sensor3;
-      int comb01 = sensor0 + sensor1;
-      int comb32 = sensor3 + sensor2;
-      int comb03 = sensor0 + sensor3;
-      int comb12 = sensor1 + sensor2;
-      Serial.print("Sensor 0: ");
-      Serial.print(sensor0);
-      Serial.print("    Sensor 1: ");
-      Serial.print(sensor1);
-      Serial.print("    Sensor 2: ");
-      Serial.print(sensor2);
-      Serial.print("    Sensor 3: ");
-      Serial.println(sensor3);
+        bool test_found = false;
 
-      // Comparamos entradas opuesta y desacoplamos las respuestas
-      if (sensor0 >= sensor2)
-      {
-        x1 = factor_s*-1;
-        y1 = 1;
-      }
-      else
-      {
-        x1 = factor_s*1;
-        y1 = -1;
-      }
+        convergencia = true;
+        //Serial.println(millis());
+        //Serial.println(tiempo+150000); 
+        while(millis() < tiempo + 150000) {
+            // Lectura de los sensores:
+            sensor0 = analogRead(A0);
+            delay(1);
+            sensor1 = analogRead(A1);
+            delay(1);
+            sensor2 = analogRead(A2);
+            delay(1);
+            sensor3 = analogRead(A3);
+            delay(1);
 
-      if (sensor1 >= sensor3)
-      {
-        x2 = factor_s*1;
-        y2 = 1;
-      }
-      else
-      {
-        x2 = factor_s*-1;
-        y2 = -1;
-      }
+            suma = sensor0 + sensor1 + sensor2 + sensor3;
+            comb01 = sensor0 + sensor1;
+            comb32 = sensor3 + sensor2;
+            comb03 = sensor0 + sensor3;
+            comb12 = sensor1 + sensor2;
+            Serial.print("Sensor 0: ");
+            Serial.print(sensor0);
+            Serial.print("    Sensor 1: ");
+            Serial.print(sensor1);
+            Serial.print("    Sensor 2: ");
+            Serial.print(sensor2);
+            Serial.print("    Sensor 3: ");
+            Serial.println(sensor3);
 
-      if (comb01 >= comb32)
-      {
-         y3 = 1;
-      }
-      else
-      {
-        y3 = -1;
-      }
+            // Comparamos entradas opuesta y desacoplamos las respuestas
+            if (sensor0 >= sensor2) {
+                x1 = -factor_s;
+                y1 = 1;
+            }
+            else {
+                x1 = factor_s;
+                y1 = -1;
+            }
 
-      
-      if (comb03 >= comb12){x3 = factor_s*-1;}
-      else{x3 = factor_s*1;}
+            if (sensor1 >= sensor3) {
+                x2 = factor_s;
+                y2 = 1;
+            }
+            else {
+                x2 = -factor_s;
+                y2 = -1;
+            }
 
-      x = x1 + x2 + x3;
-      y = y1 + y2 + y3;
-  //Agregamos el elemento integral para evitar el error en estado estaiconario
+            if (comb01 >= comb32) {
+                y3 = 1;
+            }
+            else {
+                y3 = -1;
+            }
+
+            if (comb03 >= comb12){x3 = -factor_s;}
+            else{x3 = factor_s;}
+
+            x = x1 + x2 + x3;
+            y = y1 + y2 + y3;
+            //Agregamos el elemento integral para evitar el error en estado estaiconario
      
-      if (x == 0){x = x0; }else{x0 = x;}
-      if (y == 0){y = y0;}else{y0 = y;}
+            if (x == 0){x = x0;}else{x0 = x;}
+            if (y == 0){y = y0;}else{y0 = y;}
 
+            // Eliminamos cuando el valor es de 2
+            x = 2*(x > 0) - 1;// Original: x/abs(x);
+            y = 2*(y > 0) - 1;// Original: y/abs(y);
 
-// Eliminamos cuando el valor es de 2
-      x = x/abs(x);
-      y = y/abs(y);
+            hor0 = hor0 + x;
+            ver0 = ver0 + y;
 
-      hor0 = hor0 + x;
-      ver0 = ver0 + y;
+            if ((hor0 >= 225) or (hor0 <= -45)) {
+                hor0 = hor;
+            }
 
-      if ((hor0 >= 225) or (hor0 <= -45) )
-      {
-        hor0 = hor;
-      }
-    
-      if ((ver0 >= 225) or (ver0 <= -45) )
-      {
-        ver0 = ver;
-      }
+            if ((ver0 >= 225) or (ver0 <= -45)) {
+                ver0 = ver;
+            }
 
-      if (suma >= 0)
-      //if (suma >= 200)
-      {
-        amp = 1;
-        if (convergencia)
-        {
-          //señal arduino uno de medir A ESTA PARTE NO ACCEDE CUANDO SE HACEN PRUEBAS DE LABORATORIO
-          //LEA LA BIBLIA
-          digitalWrite(2, HIGH); 
-          convergencia = false; 
-        } 
-      }
-      else
-      {
-        amp = 2;
-      }
-      //Ejecutamos el seguimiento
-      //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
-      myservo2.writeMicroseconds(sec(ver0));
-      myservo1.writeMicroseconds(sec(hor0));
-      delay(40);
-           
-      // Transmision al PC para fines de pruebas:
-      /*
-      Serial.print(sensor0);
-      Serial.print(",");
-      Serial.print(sensor1);
-      Serial.print(",");
-      Serial.print(sensor2);
-      Serial.print(",");
-      Serial.print(sensor3);
-      Serial.print(",");
-      Serial.print(suma);
-      Serial.print(",");    
-      //Serial.print(analogRead(potpin0));
-      //Serial.print(" ");
-      //Serial.print(analogRead(potpin1));
-      //Serial.print(" / ");
-      Serial.print(x);
-      Serial.print(",");
-      Serial.println(y);
-      */
-      // waits for the servo to get there
+            if (suma >= 0) {
+            //if (suma >= 200)
+                if (convergencia) {
+                    //señal arduino uno de medir A ESTA PARTE NO ACCEDE CUANDO SE HACEN PRUEBAS DE LABORATORIO
+                    //LEA LA BIBLIA
+                    digitalWrite(2, HIGH); 
+                    convergencia = false; 
+                }
+            }
+            //Ejecutamos el seguimiento
+            //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
+            myservo2.writeMicroseconds(sec(ver0));
+            myservo1.writeMicroseconds(sec(hor0));
+            delay(40);
+            // waits for the servo to get there
+        }
+        // Ramp-down
+        myservo1.writeMicroseconds(sec(00));
+        myservo2.write(180);
+        delay(5000);
+
+        myservo1.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
+        myservo2.detach();
+        // Apagamos la energia de los motores
+        digitalWrite(4, LOW);
+        //informamos al arduino UNO que termina la medición
+        digitalWrite(2,LOW);
+        //delay(100);
+        //pinMode(2,INPUT);
+        delay(90000); // The arduino should sleep instead of wait 90 seconds.
+        digitalWrite(7, LOW);
     }
-  
-
-  // Ramp-down
-  myservo1.writeMicroseconds(sec(00));
-  myservo2.write(180);
-  delay(5000);
-
-  
-  myservo1.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
-  myservo2.detach();
-  // Apagamos la energia de los motores
-  digitalWrite(4, LOW);
-  
-  //informamos al arduino UNO que termina la medición
-  digitalWrite(2,LOW);
-  //delay(100);
-  //pinMode(2,INPUT);
-  delay(90000);
-  digitalWrite(7, LOW);
-  }
-  Serial.println("if completed");
-  //Serial.println("OK");
-  delay(1000);
-  //esperamos que arduino UNO termine su transferencia
-  // SEGMENTO DESACTIVADO PARA PRUEBAS
-  //if (digitalRead(2)==0)
-  //while(digitalRead(2)==0)
-  //{
-  //}
-
-  //Apagamos arduino Uno y M2M
+    Serial.println("if completed");
+    //Serial.println("OK");
+    delay(1000);
+    //esperamos que arduino UNO termine su transferencia
+    // SEGMENTO DESACTIVADO PARA PRUEBAS
+    //if (digitalRead(2)==0)
+    //while(digitalRead(2)==0)
+    //{
+    //}
+    //Apagamos arduino Uno y M2M
 //********************************************************************************************************************************************
 //FIN CODIGO
 //********************************************************************************************************************************************
-  sleepNow();     // sleep function called here
-
+    sleepNow();     // sleep function called here
 }
 
-bool found()
-{
-      int sensor0 = analogRead(A0);
-      delay(1);
-      int sensor1 = analogRead(A1);
-      delay(1);
-      int sensor2 = analogRead(A2);
-      delay(1);
-      int sensor3 = analogRead(A3);
-      delay(1);
-    
-      // Comparamos entradas opuesta y desacoplamos las respuestas
-      // Basta que se cumpla una condición para que se justifique
-      // Se usa para la busqueda aproximada del sol
-      return abs(sensor0-sensor2)>=4||(abs(sensor1-sensor3)>=4);
+bool found() {
+    int sensor0 = analogRead(A0);
+    delay(1);
+    int sensor1 = analogRead(A1);
+    delay(1);
+    int sensor2 = analogRead(A2);
+    delay(1);
+    int sensor3 = analogRead(A3);
+    delay(1);
+    // Comparamos entradas opuesta y desacoplamos las respuestas
+    // Basta que se cumpla una condición para que se justifique
+    // Se usa para la busqueda aproximada del sol
+    return abs(sensor0-sensor2)>=4||(abs(sensor1-sensor3)>=4);
 }
-int sec(int in)
-{
-  return map(in, -45, 225, 500, 2500);   
+
+int sec(int in) {
+    return map(in, -45, 225, 500, 2500);   
 }
