@@ -41,6 +41,7 @@ void setup() {
     pinMode(A2,INPUT); //stop trigger from Tracker Unit init
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
+    SPI.begin();
     delay(1500);
     Serial.println(F("Begin."));
     ss.begin(GPSBaud); 
