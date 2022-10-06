@@ -28,10 +28,11 @@
 #define CTRL_Z 26 // termino
 
 void setup() {
-    pinMode(A2,INPUT); //stop trigger from Tracker Unit init
+    pinMode(CS_ADC, OUTPUT);
     Serial.begin(115200);
     delay(1500);
     Serial.println(F("Testing the ADC MCP3204-BVSL..."));
+    SPI.begin();
 }
 
 void loop() {
@@ -43,7 +44,7 @@ void loop() {
     Serial.print(read_ADC(3));
     Serial.print(F("  CH4: "));
     Serial.println(read_ADC(4));
-    delay(500);
+    delay(100);
 }
 
 String data() {
@@ -77,18 +78,35 @@ String data() {
     Serial.println(zz);
     return zz;
 }
+/*
+int read_ADC(int channel) {
+    byte adcPrimaryConfig =0x06; //setup byte
+    byte adcSecondaryConfig = channel << 6;
+    byte adcPrimaryByteMask = 0b00001111;      // b00001111 isolates the 4 LSB for the value returned. 
+    noInterrupts(); // disable interupts to prepare to send address data to the ADC.  
+    digitalWrite(CS_ADC, LOW); // take the Chip Select pin low to select the ADC.
+    SPI.transfer(adcPrimaryConfig); //  send in the primary configuration address byte to the ADC.  
+    byte adcPrimaryByte = SPI.transfer(adcSecondaryConfig); // read the primary byte, also sending in the secondary address byte.  
+    byte adcSecondaryByte = SPI.transfer(0x00); // read the secondary byte, also sending 0 as this doesn't matter. 
+    digitalWrite(CS_ADC, HIGH); // take the Chip Select pin high to de-select the ADC.
+    interrupts(); // Enable interupts.
+    adcPrimaryByte &= adcPrimaryByteMask; // Limits the value of the primary byte to the 4 LSB:
+    int digitalValue = (adcPrimaryByte << 8) | adcSecondaryByte; // Shifts the 4 LSB of the primary byte to become the 4 MSB of the 12 bit digital value, this is then ORed to the secondary byte value that holds the 8 LSB of the digital value.
+    return digitalValue; // Returns the value from the function
+}
+*/
 
 int read_ADC(int channel) {
     //ADC SPI interface
-    const int byte8 = 0x06; //setup byte
+    const int byte8 =0x06; //setup byte
     int adcValue = 0;
     int byte16 = (channel - 1) << 14; //bitshifted channel for second block.
 
     digitalWrite(CS_ADC, LOW); //select MCP3204
     SPI.transfer(byte8);
     adcValue = SPI.transfer16(byte16) & 0x0FFF; //ADC sample bitmasking.
-
     digitalWrite(CS_ADC, HIGH); //turn off device
+
     return adcValue;
 }
 
