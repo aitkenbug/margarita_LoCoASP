@@ -39,6 +39,7 @@ SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 void setup() {
     String zz, zz2, zz3, zz4;
     pinMode(A2,INPUT); //stop trigger from Tracker Unit init
+    pinMode(CS_ADC, OUTPUT); // pinMode!!!
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
     SPI.begin();
