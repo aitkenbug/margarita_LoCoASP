@@ -27,7 +27,10 @@
 #define SPICLOCK 13 // CLK
 #define CTRL_Z 26 // termino
 
+char sensor_data[30] = {0};
+
 void setup() {
+    pinMode(A0, INPUT);
     pinMode(CS_ADC, OUTPUT);
     Serial.begin(115200);
     delay(1500);
@@ -44,15 +47,17 @@ void loop() {
     Serial.print(read_ADC(3));
     Serial.print(F("  CH4: "));
     Serial.println(read_ADC(4));
+    data();
     delay(100);
 }
 
 String data() {
     //Sensor data processing and collation.
     int readvalue = 0, data1 = 0, data2 = 0, data3 = 0, data4 = 0;
-    char zz[30];
+    memset(&sensor_data[0], 0, sizeof(sensor_data));
     //Sensor readout, keep highest value of each sensor.
     while (digitalRead(A2)) {//Second check of A2 (?)
+        SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(1);
         if (data1 <= readvalue) {
             data1 = readvalue;
@@ -72,11 +77,12 @@ String data() {
         if (data4 <= readvalue) {
             data4 = readvalue;
         }
+        SPI.endTransaction();
     }
-    sprintf(zz, ",%d,%d,%d,%d", data1, data2, data3, data4);
+    sprintf(sensor_data, ",%d,%d,%d,%d", data1, data2, data3, data4);
     Serial.print(F("Sensor data: "));
-    Serial.println(zz);
-    return zz;
+    Serial.println(sensor_data);
+    return sensor_data;
 }
 /*
 int read_ADC(int channel) {

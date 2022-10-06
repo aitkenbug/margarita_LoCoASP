@@ -27,6 +27,7 @@
 char ID[4] = "007"; // Instrument ID for tracking, to be ported on config.h
 char bmp_data[30] = {0};
 char gps_data[50] = {0};
+char sensor_data[30] = {0};
 static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 
 SFE_BMP180 pressure; // BMP180 object
@@ -91,7 +92,7 @@ void loop() {//nothing happens here.
 String data() {
     //Sensor data processing and collation.
     int readvalue = 0, data1 = 0, data2 = 0, data3 = 0, data4 = 0;
-    char zz[30];
+    memset(&sensor_data[0], 0, sizeof(sensor_data));
     //Sensor readout, keep highest value of each sensor.
     while (digitalRead(A2)) {//Second check of A2 (?)
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
@@ -116,11 +117,11 @@ String data() {
         }
         SPI.endTransaction();
     }
-    sprintf(zz, ",%d,%d,%d,%d", data1, data2, data3, data4);
+    sprintf(sensor_data, ",%d,%d,%d,%d", data1, data2, data3, data4);
     Serial.print(F("Sensor data: "));
-    Serial.println(zz);
+    Serial.println(sensor_data);
     //WARN: maybe some debugging here?
-    return zz;
+    return sensor_data;
 }
 
 String GPS() {
