@@ -93,6 +93,7 @@ String data() {
     char zz[30];
     //Sensor readout, keep highest value of each sensor.
     while (digitalRead(A2)) {//Second check of A2 (?)
+        SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(1);
         if (data1 <= readvalue) {
             data1 = readvalue;
@@ -112,6 +113,7 @@ String data() {
         if (data4 <= readvalue) {
             data4 = readvalue;
         }
+        SPI.endTransaction();
     }
     sprintf(zz, ",%d,%d,%d,%d", data1, data2, data3, data4);
     Serial.print(F("Sensor data: "));
