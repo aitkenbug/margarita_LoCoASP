@@ -24,58 +24,71 @@
 #include <SD.h> // SD Card Library
 #include <SPI.h> // Hardware SPI library for MCP3204 ADC.
 
-char ID[4] = "007"; // Instrument ID for tracking, to be ported on config.h
-char bmp_data[30] = {0};
-char gps_data[50] = {0};
-char sensor_data[30] = {0};
-static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
+#define CS_ADC 4 // ADC chip select.
+#define CS_SD 8  //SD chip select. Matches hardware SPI bus implementation on 328P.
 
 SFE_BMP180 pressure; // BMP180 object
 TinyGPSPlus gps; // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
-#define CS_ADC 4 // ADC chip select.
-#define CS_SD 8  //SD chip select. Matches hardware SPI bus implementation on 328P.
+char data_CSV[110] = {0};
+static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
+struct instrumentStructure {
+    int led1 = 0;
+    int led2 = 0;
+    int led3 = 0;
+    int led4 = 0;
+    float gps_lat = 0.0;
+    float gps_lng = 0.0;
+    int gps_day = 0;
+    int gps_month = 0;
+    int gps_year = 0;
+    int gps_hour = 0;
+    int gps_minute = 0;
+    int gps_second = 0;
+    float gps_alt = 0.0;
+    double bmp_temp = 0.0;
+    double bmp_pres = 0.0;
+    double bmp_alt = 0.0;
+};
+struct instrumentStructure instrumentData;
 
 void setup() {
-    String zz, zz2, zz3, zz4;
+    delay(1000);
     pinMode(A2,INPUT); //stop trigger from Tracker Unit init
     pinMode(CS_ADC, OUTPUT); // pinMode!!!
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
-    SPI.begin();
-    delay(1500);
     Serial.println(F("Begin."));
     ss.begin(GPSBaud); 
     pressure.begin();
 
     //---MEASURING STARTS HERE---
-    zz = ID;
     while (digitalRead(A2) == 0) {
         //do nothing while A2 is low
         //WARN: isn't A2 being checked twice? here and on data() function. possible efficiency boost here.
     }
 
+    SPI.begin();
     delay(100);
-    zz2 = data(); //ADC data
+    data(); //ADC data
+    SPI.end();
 
     delay(100);
-    zz3 = GPS(); //GPS data
+    GPS(); //GPS data
     delay(100);
 
+    SPI.begin();
     SD.begin(CS_SD); //SD init
     delay(100);
 
-    zz4 = BMP(); //BMP180 data
+    BMP(); //BMP180 data
     delay(100);
 
     //---DATA STORAGE---
     File dataFile = SD.open("Data.txt", FILE_WRITE);
     if (dataFile) { //check availability
-        dataFile.print(zz);
-        dataFile.print(zz2);
-        dataFile.print(zz3);
-        dataFile.println(zz4); //WARN: maybe better to assemble string internally? not really relevant tho.
+        dataFile.println(data2csv());
         dataFile.close();
         Serial.println(F("Data saved successfully."));
     }
@@ -83,6 +96,16 @@ void setup() {
         Serial.println(F("Error saving to Data.txt")); //WARN: good idea to implement some sort of debugging here.
     }
     delay(100);
+
+    Serial.println(F("\nCurrently saved data:\n"));
+    dataFile = SD.open("Data.txt");
+    // if the file is available, write to it:
+    if (dataFile) {
+        while (dataFile.available()) {
+            Serial.write(dataFile.read());
+        }
+    }
+    dataFile.close();
 }
 
 void loop() {//nothing happens here.
@@ -90,115 +113,75 @@ void loop() {//nothing happens here.
 
 //---DATA ACQUISITION FUNCTIONS---
 
-String data() {
+void data() {
     //Sensor data processing and collation.
-    int readvalue = 0, data1 = 0, data2 = 0, data3 = 0, data4 = 0;
-    memset(&sensor_data[0], 0, sizeof(sensor_data));
+    int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
     while (digitalRead(A2)) {//Second check of A2 (?)
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(1);
-        if (data1 <= readvalue) {
-            data1 = readvalue;
+        if (instrumentData.led1 <= readvalue) {
+            instrumentData.led1 = readvalue;
         }
 
         readvalue = read_ADC(2);
-        if (data2 <= readvalue) {
-            data2 = readvalue;
+        if (instrumentData.led2 <= readvalue) {
+            instrumentData.led2 = readvalue;
         }
 
         readvalue = read_ADC(3);
-        if (data3 <= readvalue) {
-            data3 = readvalue;
+        if (instrumentData.led3 <= readvalue) {
+            instrumentData.led3 = readvalue;
         }
 
         readvalue = read_ADC(4);
-        if (data4 <= readvalue) {
-            data4 = readvalue;
+        if (instrumentData.led4 <= readvalue) {
+            instrumentData.led4 = readvalue;
         }
         SPI.endTransaction();
     }
-    sprintf(sensor_data, ",%d,%d,%d,%d", data1, data2, data3, data4);
-    Serial.print(F("Sensor data: "));
-    Serial.println(sensor_data);
-    //WARN: maybe some debugging here?
-    return sensor_data;
 }
 
-String GPS() {
+void GPS() {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    char lat_str[8], lng_str[8], alt_str[8];
-    float lat = 0.0, lng = 0.0, alt = 0.0;
-    memset(&gps_data[0], 0, sizeof(gps_data));
-    unsigned long tiempo = millis(); //El tiempo de inicio para marcar
-    while (millis() < tiempo + 30000) {
+    unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
+    while (millis() < timeout) {
         while (ss.available() > 0) {
             if (gps.encode(ss.read())) {
                 if (gps.location.isValid()) {
 	            // isValid checks for the complete GPRMC frame.
-                    lat = gps.location.lat();
-                    lng = gps.location.lng();
-                    alt = gps.altitude.meters();
-                    dtostrf(abs(lat), 7, 4, lat_str);
-                    if (abs(lng) >= 100.0)
-                        dtostrf(abs(lng), 8, 4, lng_str);
-                    else
-                        dtostrf(abs(lng), 7, 4, lng_str);
-                    if (alt >= 1000)
-                        dtostrf(alt, 7, 2, alt_str);
-                    else
-                        dtostrf(alt, 6, 2, alt_str);
-                    sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s", lat_str, 'S'-5*(lat > 0),
-                                                                           lng_str, 'W'-18*(lng > 0),
-                                                                           gps.date.day(),
-                                                                           gps.date.month(),
-                                                                           gps.date.year(),
-                                                                           gps.time.hour(),
-                                                                           gps.time.minute(),
-                                                                           gps.time.second(),
-                                                                           alt_str);
+                    instrumentData.gps_lat = gps.location.lat();
+                    instrumentData.gps_lng = gps.location.lng();
+                    instrumentData.gps_day = gps.date.day();
+                    instrumentData.gps_month = gps.date.month();
+                    instrumentData.gps_year = gps.date.year();
+                    instrumentData.gps_hour = gps.time.hour();
+                    instrumentData.gps_minute = gps.time.minute();
+                    instrumentData.gps_second = gps.time.second();
+                    instrumentData.gps_alt = gps.altitude.meters();
 	                break;
                 }
             }
         }
     }
-    Serial.print(F("GPS data: "));
-    Serial.println(gps_data);
-    return gps_data;
 }
 
-String BMP() {
+void BMP() {
     //BMP180 data gathering. IC out of production, would be wise to replace.
-    char temp_str[6], pres_str[7], alt_str[8];
-    double temp = 0.0, pres = 0.0, alt = 0.0;
     uint8_t wait = 0;
 
-    memset(&bmp_data[0], 0, sizeof(bmp_data));
+    //memset(&bmp_data[0], 0, sizeof(bmp_data));
     wait = pressure.startTemperature();
     delay(wait);
 
-    if (!pressure.getTemperature(temp))
-        temp=0.0;
+    if (!pressure.getTemperature(instrumentData.bmp_temp))
+        instrumentData.bmp_temp = 0.0;
     wait = pressure.startPressure(3);
     delay(wait);
 
-    if (!pressure.getPressure(pres, temp))
-        pres = 0.0;
-    alt = pressure.altitude(pres, 1013); // P0 = 1013
-
-    if (abs(temp) < 10)
-        dtostrf(temp, 4, 2, temp_str);
-    else
-        dtostrf(temp, 5, 2, temp_str);
-    dtostrf(pres, 6, 2, pres_str);
-    if (alt >= 1000.0)
-        dtostrf(alt, 7, 2, alt_str);
-    else
-        dtostrf(alt, 6, 2, alt_str);
-    sprintf(bmp_data, ",%s,%s,%s", temp_str, pres_str, alt_str);
-    Serial.print(F("BMP data: "));
-    Serial.println(bmp_data);
-    return bmp_data;
+    if (!pressure.getPressure(instrumentData.bmp_pres, instrumentData.bmp_temp))
+        instrumentData.bmp_pres = 0.0;
+    instrumentData.bmp_alt = pressure.altitude(instrumentData.bmp_pres, 1013); // P0 = 1013
 }
 
 int read_ADC(int channel) {
@@ -210,7 +193,55 @@ int read_ADC(int channel) {
     digitalWrite(CS_ADC, LOW); //select MCP3204
     SPI.transfer(byte8);
     adcValue = SPI.transfer16(byte16) & 0x0FFF; //ADC sample bitmasking.
-
     digitalWrite(CS_ADC, HIGH); //turn off device
+
     return adcValue;
+}
+
+String data2csv() {
+    char lat_str[8], lng_str[8], gps_alt_str[8];
+    char temp_str[6], pres_str[7], bmp_alt_str[8];
+    memset(&data_CSV[0], 0, sizeof(data_CSV));
+
+    dtostrf(abs(instrumentData.gps_lat), 7, 4, lat_str);
+    if (abs(instrumentData.gps_lng) >= 100.0)
+        dtostrf(abs(instrumentData.gps_lng), 8, 4, lng_str);
+    else
+        dtostrf(abs(instrumentData.gps_lng), 7, 4, lng_str);
+    if (instrumentData.gps_alt >= 1000)
+        dtostrf(instrumentData.gps_alt, 7, 2, gps_alt_str);
+    else
+        dtostrf(instrumentData.gps_alt, 6, 2, gps_alt_str);
+
+    if (abs(instrumentData.bmp_temp) < 10)
+        dtostrf(instrumentData.bmp_temp, 4, 2, temp_str);
+    else
+        dtostrf(instrumentData.bmp_temp, 5, 2, temp_str);
+    dtostrf(instrumentData.bmp_pres, 6, 2, pres_str);
+    if (instrumentData.bmp_alt >= 1000.0)
+        dtostrf(instrumentData.bmp_alt, 7, 2, bmp_alt_str);
+    else
+        dtostrf(instrumentData.bmp_alt, 6, 2, bmp_alt_str);
+
+    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData.led1,
+                                                                                   instrumentData.led2,
+                                                                                   instrumentData.led3,
+                                                                                   instrumentData.led4,
+                                                                                   lat_str,
+                                                                                   'S'-5*(instrumentData.gps_lat > 0),
+                                                                                   lng_str,
+                                                                                   'W'-18*(instrumentData.gps_lng > 0),
+                                                                                   instrumentData.gps_day,
+                                                                                   instrumentData.gps_month,
+                                                                                   instrumentData.gps_year,
+                                                                                   instrumentData.gps_hour,
+                                                                                   instrumentData.gps_minute,
+                                                                                   instrumentData.gps_second,
+                                                                                   gps_alt_str,
+                                                                                   temp_str,
+                                                                                   pres_str,
+                                                                                   bmp_alt_str);
+    Serial.print(F("All data: "));
+    Serial.println(data_CSV);
+    return data_CSV;
 }
