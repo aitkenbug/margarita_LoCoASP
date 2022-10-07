@@ -77,9 +77,10 @@ void setup() {
         dataFile.print(zz3);
         dataFile.println(zz4); //WARN: maybe better to assemble string internally? not really relevant tho.
         dataFile.close();
+        Serial.println(F("Data saved successfully."));
     }
     else {
-        //Serial.println(F("Error en Data.txt")); //WARN: good idea to implement some sort of debugging here.
+        Serial.println(F("Error saving to Data.txt")); //WARN: good idea to implement some sort of debugging here.
     }
     delay(100);
 }
