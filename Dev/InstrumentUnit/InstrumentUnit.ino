@@ -38,8 +38,8 @@ struct instrumentStructure {
     int led2 = 0;
     int led3 = 0;
     int led4 = 0;
-    float gps_lat = 0.0;
-    float gps_lng = 0.0;
+    double gps_lat = 0.0;
+    double gps_lng = 0.0;
     int gps_day = 0;
     int gps_month = 0;
     int gps_year = 0;

@@ -27,7 +27,7 @@ SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
 void setup() {
     // put your setup code here, to run once:
-    Serial.begin(115200);
+    Serial.begin(9600);
     delay(1500);
     Serial.println(F("Initializing the GPS module..."));
     ss.begin(GPSBaud);

@@ -24,8 +24,8 @@ Arduino Uno, RedBoard, Pro, etc.
 ******************************************************************************/
 
 #include <SoftwareSerial.h> // Include the SoftwareSerial library
-#define ARDUINO_GPS_RX 9 // Arduino RX pin connected to GPS TX
-#define ARDUINO_GPS_TX 8 // Arduino TX pin connected to GPS RX
+#define ARDUINO_GPS_RX 9 // Arduino RX pin 9 connected to GPS TX 2 For the MSI GPS
+#define ARDUINO_GPS_TX 8 // Arduino TX pin 8 connected to GPS RX 3 For the MSI GPS
 #define GPS_BAUD_RATE 9600 // The GPS Shield module defaults to 9600 baud
 // Create a SoftwareSerial object called gps:
 SoftwareSerial gpsPort(ARDUINO_GPS_TX, ARDUINO_GPS_RX);
@@ -42,6 +42,7 @@ void setup()
 
 void loop() 
 {
+  SerialMonitor.write(gpsPort.location.isValid());
   if (gpsPort.available()) // If GPS data is available
     SerialMonitor.write(gpsPort.read()); // Read it and print to SerialMonitor
   if (SerialMonitor.available()) // If SerialMonitor data is available
