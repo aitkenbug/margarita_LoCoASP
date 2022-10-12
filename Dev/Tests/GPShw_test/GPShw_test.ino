@@ -42,7 +42,6 @@ void setup()
 
 void loop() 
 {
-  SerialMonitor.write(gpsPort.location.isValid());
   if (gpsPort.available()) // If GPS data is available
     SerialMonitor.write(gpsPort.read()); // Read it and print to SerialMonitor
   if (SerialMonitor.available()) // If SerialMonitor data is available
