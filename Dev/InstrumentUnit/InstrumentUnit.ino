@@ -17,18 +17,24 @@
 
 
 //---LIBRARIES---
-#include <SFE_BMP180.h> // BMP180 for pressure, altitude, and temperature of turret assembly.
-#include <Wire.h> // I2C bus for BMP180
-#include <TinyGPS++.h> // GPS Library, to be replaced by raw NMEA commands.
+#include <Arduino.h>        // For using the ESP32 with the Arduino IDE.
+#include <TinyGPSPlus.h>    // GPS Library, to be replaced by raw NMEA commands.
+#include <SFE_BMP180.h>     // BMP180 for pressure, altitude, and temperature of turret assembly.
+#include <Wire.h>           // I2C bus for BMP180
 #include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
-#include <SD.h> // SD Card Library
-#include <SPI.h> // Hardware SPI library for MCP3204 ADC.
+#include <SD.h>             // SD Card Library
+#include <SPI.h>            // Hardware SPI library for MCP3204 ADC.
 
-#define CS_ADC 4 // ADC chip select.
-#define CS_SD 8  //SD chip select. Matches hardware SPI bus implementation on 328P.
+#ifdef ESP32
+    #define trackerTrigger 21
+#else
+    #define trackerTrigger A2
+#endif
+#define CS_ADC 4         // ADC chip select.
+#define CS_SD 8          //SD chip select. Matches hardware SPI bus implementation on 328P.
 
-SFE_BMP180 pressure; // BMP180 object
-TinyGPSPlus gps; // GPS object.
+SFE_BMP180 pressure;     // BMP180 object
+TinyGPSPlus gps;         // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
 char data_CSV[110] = {0};
@@ -55,34 +61,43 @@ struct instrumentStructure instrumentData;
 
 void setup() {
     delay(1000);
-    pinMode(A2,INPUT); //stop trigger from Tracker Unit init
+    pinMode(trackerTrigger,INPUT); //stop trigger from Tracker Unit init
     pinMode(CS_ADC, OUTPUT); // pinMode!!!
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
-    Serial.println(F("Begin."));
-    ss.begin(GPSBaud); 
+    Serial.print(F("Initiating software serial..."));
+    ss.begin(GPSBaud);
+    Serial.print(F(" Done.\nInitiating the BMP180..."));
     pressure.begin();
+    Serial.println(F("      Done."));
 
     //---MEASURING STARTS HERE---
-    while (digitalRead(A2) == 0) {
-        //do nothing while A2 is low
-        //WARN: isn't A2 being checked twice? here and on data() function. possible efficiency boost here.
+    while (digitalRead(trackerTrigger) == 0) {
+        //do nothing while trackerTrigger is low
+        //WARN: isn't trackerTrigger being checked twice? here and on data() function. possible efficiency boost here.
     }
 
     SPI.begin();
-    delay(100);
+    Serial.print(F("Measuring sensors..."));
     data(); //ADC data
+    Serial.println(F("          Done."));
     SPI.end();
-
     delay(100);
+
+    Serial.print(F("Reading the GPS module..."));
     GPS(); //GPS data
+    Serial.println(F("     Done."));
     delay(100);
 
     SPI.begin();
+    Serial.print(F("Initiating the uSD card..."));
     SD.begin(CS_SD); //SD init
+    Serial.println(F("           Done."));
     delay(100);
 
+    Serial.print(F("Measuring with the BMP180..."));
     BMP(); //BMP180 data
+    Serial.println(F("  Done."));
     delay(100);
 
     //---DATA STORAGE---
@@ -99,7 +114,6 @@ void setup() {
 
     Serial.println(F("\nCurrently saved data:\n"));
     dataFile = SD.open("Data.txt");
-    // if the file is available, write to it:
     if (dataFile) {
         while (dataFile.available()) {
             Serial.write(dataFile.read());
@@ -117,7 +131,7 @@ void data() {
     //Sensor data processing and collation.
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
-    while (digitalRead(A2)) {//Second check of A2 (?)
+    while (digitalRead(trackerTrigger)) {//Second check of trackerTrigger (?)
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(1);
         if (instrumentData.led1 <= readvalue) {
