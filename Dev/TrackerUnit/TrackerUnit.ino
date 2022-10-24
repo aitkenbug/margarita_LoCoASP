@@ -59,17 +59,6 @@ void setup() {
     Wire.begin();
     Serial.begin(115200);
 
-    A1Day = byte(14);
-    A1Hour = byte(0);
-    A1Minute = byte(30);  // si coloca 0 la alarma se activara en 10, si no entiende lea la biblia
-    A1Second = byte(0);
-    AlarmBits = B11100;
-    A1Dy = false;
-    A1h12 = false;
-    A1PM = false;
-
-    Clock.setA1Time(A1Day, A1Hour, A1Minute, A1Second, AlarmBits, A1Dy, A1h12, A1PM);
-    Clock.turnOnAlarm(1);
     Serial.println("Attaching servos");
     myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
     myservo2.attach(10);
@@ -216,18 +205,21 @@ void track_the_sun(float latitude, float longitude) {
 
     Serial.println("delay1");
 
-    //  Obtención del tiempo 
-    Clock.getA1Time(ADay, AHour, AMinute, ASecond, ABits, ADy, A12h, Apm);
-    Serial.println("getA1Time");
-    DateTime ahora = myRTC.now(); //Raro... investigar como funciona bien @pp
     Serial.println("myRTC");
     // Variables del reloj
-    second = ahora.second();
-    minute = ahora.minute();
-    hour = ahora.hour();
-    day = ahora.day();
-    month = ahora.month();
-    year = ahora.year();
+    Clock.checkIfAlarm(1); //clears the Alarm1 register
+
+    bool fse PROGMEM = false; //functions require bools to be passed as reference.
+    second = (uint8_t)Clock.getSecond();
+    minute = (uint8_t)Clock.getMinute();
+    hour = (uint8_t)Clock.getHour(fse, fse);
+    day = (uint8_t)Clock.getDate();
+    month = (uint8_t)Clock.getMonth(fse);
+    year = (uint8_t)Clock.getYear(); //get current time
+
+    Clock.setA1Time(byte (0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
+
+    Serial.println("Next alarm set");
 
     // https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
     // un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
@@ -268,13 +260,6 @@ void track_the_sun(float latitude, float longitude) {
     ver0 = int(correctel);
     delay(100);
     Serial.println(ver0);
-
-    // Programacion proximo reinicio
-    A1Minute = A1Minute + byte(5);
-    if (A1Minute >= byte(60)) {
-        A1Minute = A1Minute - byte(60);
-    }
-    Serial.println("Next alarm calculated");
 
     delay(100);
     //Serial.println(A1Minute);

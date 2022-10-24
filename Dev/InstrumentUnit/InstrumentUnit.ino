@@ -38,7 +38,7 @@ TinyGPSPlus gps;         // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
 char data_CSV[110] = {0};
-static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
+static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
     int led1 = 0;
     int led2 = 0;
@@ -172,7 +172,7 @@ void GPS() {
                     instrumentData.gps_hour = gps.time.hour();
                     instrumentData.gps_minute = gps.time.minute();
                     instrumentData.gps_second = gps.time.second();
-                    instrumentData.gps_alt = gps.altitude.meters();
+                    instrumentData.gps_alt = (float)gps.altitude.meters();
 	                break;
                 }
             }
