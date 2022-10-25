@@ -19,6 +19,11 @@
 //---LIBRARIES---
 #include <SPI.h> // Hardware SPI library for MCP3204 ADC.
 
+#ifdef ESP32
+    #define trackerTrigger 21
+#else
+    #define trackerTrigger A2
+#endif
 #define CS_ADC 4 // ADC chip select.
 
 #define SELPIN 4 //Pin de activación del ADC
@@ -30,7 +35,7 @@
 char sensor_data[30] = {0};
 
 void setup() {
-    pinMode(A0, INPUT);
+    pinMode(trackerTrigger, INPUT);
     pinMode(CS_ADC, OUTPUT);
     Serial.begin(115200);
     delay(1500);
