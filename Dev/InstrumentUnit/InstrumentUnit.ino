@@ -18,7 +18,11 @@
 
 //---LIBRARIES---
 #include <Arduino.h>        // For using the ESP32 with the Arduino IDE.
-#include <TinyGPSPlus.h>    // GPS Library, to be replaced by raw NMEA commands.
+#include <NMEAGPS.h>        // GPS Library
+#include "GPSfix_cfg.h"
+#include "NeoGPS_cfg.h"
+#include "NMEAGPS_cfg.h"
+
 #include <SFE_BMP180.h>     // BMP180 for pressure, altitude, and temperature of turret assembly.
 #include <Wire.h>           // I2C bus for BMP180
 #include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
@@ -34,7 +38,8 @@
 #define CS_SD 8          //SD chip select. Matches hardware SPI bus implementation on 328P.
 
 SFE_BMP180 pressure;     // BMP180 object
-TinyGPSPlus gps;         // GPS object.
+NMEAGPS gps;
+gps_fix fix;        // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
@@ -51,7 +56,7 @@ struct instrumentStructure {
     int gps_hour = 0;
     int gps_minute = 0;
     int gps_second = 0;
-    float gps_alt = 0.0;
+    int gps_alt = 0;
     double bmp_temp = 0.0;
     double bmp_pres = 0.0;
     double bmp_alt = 0.0;
@@ -159,25 +164,24 @@ void GPS(struct instrumentStructure *instrumentData) {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
     unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
     while (millis() < timeout) {
-        while (ss.available() > 0) {
-            if (gps.encode(ss.read())) {
-                if (gps.location.isValid()) {
+      while(gps.available(ss)){
+        fix = gps.read();
+        if (fix.valid.location){
 	            // isValid checks for the complete GPRMC frame.
-                    instrumentData->gps_lat = gps.location.lat();
-                    instrumentData->gps_lng = gps.location.lng();
-                    instrumentData->gps_day = gps.date.day();
-                    instrumentData->gps_month = gps.date.month();
-                    instrumentData->gps_year = gps.date.year();
-                    instrumentData->gps_hour = gps.time.hour();
-                    instrumentData->gps_minute = gps.time.minute();
-                    instrumentData->gps_second = gps.time.second();
-                    instrumentData->gps_alt = (float)gps.altitude.meters();
+                    instrumentData->gps_lat = fix.latitude();
+                    instrumentData->gps_lng = fix.longitude();
+                    instrumentData->gps_day = fix.dateTime.date;
+                    instrumentData->gps_month = fix.dateTime.month;
+                    instrumentData->gps_year = fix.dateTime.year;
+                    instrumentData->gps_hour = fix.dateTime.hours;
+                    instrumentData->gps_minute = fix.dateTime.minutes;
+                    instrumentData->gps_second = fix.dateTime.seconds;
+                    instrumentData->gps_alt = fix.alt.whole;
 	                break;
-                }
-            }
+          }
         }
+      }
     }
-}
 
 void BMP(struct instrumentStructure *instrumentData) {
     //BMP180 data gathering. IC out of production, would be wise to replace.
