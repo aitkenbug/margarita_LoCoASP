@@ -37,7 +37,6 @@ SFE_BMP180 pressure;     // BMP180 object
 TinyGPSPlus gps;         // GPS object.
 SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
-char data_CSV[110] = {0};
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
     int led1 = 0;
@@ -57,11 +56,11 @@ struct instrumentStructure {
     double bmp_pres = 0.0;
     double bmp_alt = 0.0;
 };
-struct instrumentStructure instrumentData;
 
 void setup() {
     delay(1000);
-    pinMode(trackerTrigger,INPUT); //stop trigger from Tracker Unit init
+    struct instrumentStructure instrumentData;
+    pinMode(trackerTrigger, INPUT); //stop trigger from Tracker Unit init
     pinMode(CS_ADC, OUTPUT); // pinMode!!!
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
@@ -79,13 +78,13 @@ void setup() {
 
     SPI.begin();
     Serial.print(F("Measuring sensors..."));
-    data(); //ADC data
+    data(&instrumentData); //ADC data
     Serial.println(F("          Done."));
     SPI.end();
     delay(100);
 
     Serial.print(F("Reading the GPS module..."));
-    GPS(); //GPS data
+    GPS(&instrumentData); //GPS data
     Serial.println(F("     Done."));
     delay(100);
 
@@ -96,14 +95,14 @@ void setup() {
     delay(100);
 
     Serial.print(F("Measuring with the BMP180..."));
-    BMP(); //BMP180 data
+    BMP(&instrumentData); //BMP180 data
     Serial.println(F("  Done."));
     delay(100);
 
     //---DATA STORAGE---
     File dataFile = SD.open("Data.txt", FILE_WRITE);
     if (dataFile) { //check availability
-        dataFile.println(data2csv());
+        dataFile.println(data2csv(&instrumentData));
         dataFile.close();
         Serial.println(F("Data saved successfully."));
     }
@@ -127,36 +126,36 @@ void loop() {//nothing happens here.
 
 //---DATA ACQUISITION FUNCTIONS---
 
-void data() {
+void data(struct instrumentStructure *instrumentData) {
     //Sensor data processing and collation.
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
     while (digitalRead(trackerTrigger)) {//Second check of trackerTrigger (?)
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(1);
-        if (instrumentData.led1 <= readvalue) {
-            instrumentData.led1 = readvalue;
+        if (instrumentData->led1 <= readvalue) {
+            instrumentData->led1 = readvalue;
         }
 
         readvalue = read_ADC(2);
-        if (instrumentData.led2 <= readvalue) {
-            instrumentData.led2 = readvalue;
+        if (instrumentData->led2 <= readvalue) {
+            instrumentData->led2 = readvalue;
         }
 
         readvalue = read_ADC(3);
-        if (instrumentData.led3 <= readvalue) {
-            instrumentData.led3 = readvalue;
+        if (instrumentData->led3 <= readvalue) {
+            instrumentData->led3 = readvalue;
         }
 
         readvalue = read_ADC(4);
-        if (instrumentData.led4 <= readvalue) {
-            instrumentData.led4 = readvalue;
+        if (instrumentData->led4 <= readvalue) {
+            instrumentData->led4 = readvalue;
         }
         SPI.endTransaction();
     }
 }
 
-void GPS() {
+void GPS(struct instrumentStructure *instrumentData) {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
     unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
     while (millis() < timeout) {
@@ -164,15 +163,15 @@ void GPS() {
             if (gps.encode(ss.read())) {
                 if (gps.location.isValid()) {
 	            // isValid checks for the complete GPRMC frame.
-                    instrumentData.gps_lat = gps.location.lat();
-                    instrumentData.gps_lng = gps.location.lng();
-                    instrumentData.gps_day = gps.date.day();
-                    instrumentData.gps_month = gps.date.month();
-                    instrumentData.gps_year = gps.date.year();
-                    instrumentData.gps_hour = gps.time.hour();
-                    instrumentData.gps_minute = gps.time.minute();
-                    instrumentData.gps_second = gps.time.second();
-                    instrumentData.gps_alt = (float)gps.altitude.meters();
+                    instrumentData->gps_lat = gps.location.lat();
+                    instrumentData->gps_lng = gps.location.lng();
+                    instrumentData->gps_day = gps.date.day();
+                    instrumentData->gps_month = gps.date.month();
+                    instrumentData->gps_year = gps.date.year();
+                    instrumentData->gps_hour = gps.time.hour();
+                    instrumentData->gps_minute = gps.time.minute();
+                    instrumentData->gps_second = gps.time.second();
+                    instrumentData->gps_alt = (float)gps.altitude.meters();
 	                break;
                 }
             }
@@ -180,7 +179,7 @@ void GPS() {
     }
 }
 
-void BMP() {
+void BMP(struct instrumentStructure *instrumentData) {
     //BMP180 data gathering. IC out of production, would be wise to replace.
     uint8_t wait = 0;
 
@@ -188,14 +187,14 @@ void BMP() {
     wait = pressure.startTemperature();
     delay(wait);
 
-    if (!pressure.getTemperature(instrumentData.bmp_temp))
-        instrumentData.bmp_temp = 0.0;
+    if (!pressure.getTemperature(instrumentData->bmp_temp))
+        instrumentData->bmp_temp = 0.0;
     wait = pressure.startPressure(3);
     delay(wait);
 
-    if (!pressure.getPressure(instrumentData.bmp_pres, instrumentData.bmp_temp))
-        instrumentData.bmp_pres = 0.0;
-    instrumentData.bmp_alt = pressure.altitude(instrumentData.bmp_pres, 1013); // P0 = 1013
+    if (!pressure.getPressure(instrumentData->bmp_pres, instrumentData->bmp_temp))
+        instrumentData->bmp_pres = 0.0;
+    instrumentData->bmp_alt = pressure.altitude(instrumentData->bmp_pres, 1013); // P0 = 1013
 }
 
 int read_ADC(int channel) {
@@ -212,45 +211,45 @@ int read_ADC(int channel) {
     return adcValue;
 }
 
-String data2csv() {
+String data2csv(struct instrumentStructure *instrumentData) {
+    char data_CSV[110] = {0};
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
-    memset(&data_CSV[0], 0, sizeof(data_CSV));
 
-    dtostrf(abs(instrumentData.gps_lat), 7, 4, lat_str);
-    if (abs(instrumentData.gps_lng) >= 100.0)
-        dtostrf(abs(instrumentData.gps_lng), 8, 4, lng_str);
+    dtostrf(abs(instrumentData->gps_lat), 7, 4, lat_str);
+    if (abs(instrumentData->gps_lng) >= 100.0)
+        dtostrf(abs(instrumentData->gps_lng), 8, 4, lng_str);
     else
-        dtostrf(abs(instrumentData.gps_lng), 7, 4, lng_str);
-    if (instrumentData.gps_alt >= 1000)
-        dtostrf(instrumentData.gps_alt, 7, 2, gps_alt_str);
+        dtostrf(abs(instrumentData->gps_lng), 7, 4, lng_str);
+    if (instrumentData->gps_alt >= 1000)
+        dtostrf(instrumentData->gps_alt, 7, 2, gps_alt_str);
     else
-        dtostrf(instrumentData.gps_alt, 6, 2, gps_alt_str);
+        dtostrf(instrumentData->gps_alt, 6, 2, gps_alt_str);
 
-    if (abs(instrumentData.bmp_temp) < 10)
-        dtostrf(instrumentData.bmp_temp, 4, 2, temp_str);
+    if (abs(instrumentData->bmp_temp) < 10)
+        dtostrf(instrumentData->bmp_temp, 4, 2, temp_str);
     else
-        dtostrf(instrumentData.bmp_temp, 5, 2, temp_str);
-    dtostrf(instrumentData.bmp_pres, 6, 2, pres_str);
-    if (instrumentData.bmp_alt >= 1000.0)
-        dtostrf(instrumentData.bmp_alt, 7, 2, bmp_alt_str);
+        dtostrf(instrumentData->bmp_temp, 5, 2, temp_str);
+    dtostrf(instrumentData->bmp_pres, 6, 2, pres_str);
+    if (instrumentData->bmp_alt >= 1000.0)
+        dtostrf(instrumentData->bmp_alt, 7, 2, bmp_alt_str);
     else
-        dtostrf(instrumentData.bmp_alt, 6, 2, bmp_alt_str);
+        dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData.led1,
-                                                                                   instrumentData.led2,
-                                                                                   instrumentData.led3,
-                                                                                   instrumentData.led4,
+    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
+                                                                                   instrumentData->led2,
+                                                                                   instrumentData->led3,
+                                                                                   instrumentData->led4,
                                                                                    lat_str,
-                                                                                   'S'-5*(instrumentData.gps_lat > 0),
+                                                                                   'S'-5*(instrumentData->gps_lat > 0),
                                                                                    lng_str,
-                                                                                   'W'-18*(instrumentData.gps_lng > 0),
-                                                                                   instrumentData.gps_day,
-                                                                                   instrumentData.gps_month,
-                                                                                   instrumentData.gps_year,
-                                                                                   instrumentData.gps_hour,
-                                                                                   instrumentData.gps_minute,
-                                                                                   instrumentData.gps_second,
+                                                                                   'W'-18*(instrumentData->gps_lng > 0),
+                                                                                   instrumentData->gps_day,
+                                                                                   instrumentData->gps_month,
+                                                                                   instrumentData->gps_year,
+                                                                                   instrumentData->gps_hour,
+                                                                                   instrumentData->gps_minute,
+                                                                                   instrumentData->gps_second,
                                                                                    gps_alt_str,
                                                                                    temp_str,
                                                                                    pres_str,
