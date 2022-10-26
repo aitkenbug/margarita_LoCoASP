@@ -208,6 +208,7 @@ void track_the_sun(float latitude, float longitude) {
     Serial.println("myRTC");
     // Variables del reloj
     Clock.checkIfAlarm(1); //clears the Alarm1 register
+    Clock.turnOnAlarm(1);
 
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
     second = (uint8_t)Clock.getSecond();
@@ -217,9 +218,12 @@ void track_the_sun(float latitude, float longitude) {
     month = (uint8_t)Clock.getMonth(fse);
     year = (uint8_t)Clock.getYear(); //get current time
 
-    Clock.setA1Time(byte (0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
+    Clock.setA1Time(byte(0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
 
-    Serial.println("Next alarm set");
+    Serial.print("Next alarm set: ");
+    Serial.print((minute + 5) % 60);
+    Serial.print("/");
+    Serial.println(Clock.checkAlarmEnabled(1));
 
     // https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
     // un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
@@ -261,19 +265,7 @@ void track_the_sun(float latitude, float longitude) {
     delay(100);
     Serial.println(ver0);
 
-    delay(100);
-    //Serial.println(A1Minute);
-    delay(100);
-    //Serial.println("Proximo despertar en 10 minutos");
-    delay(100);
-
-    // Seteo de la alarma próximo reinicio
-    Clock.setA1Time(A1Day, A1Hour, A1Minute, A1Second, AlarmBits, A1Dy, A1h12, A1PM);
-    //Clock.turnOffAlarm(1);
-    //Clock.turnOnAlarm(1);
-    //Serial.println("Alarma activada");
-    delay(100);
-    Serial.println("Alarm set, starting peripherals");
+    Serial.println("Starting Peripherals");
 //********************************************************************************************************************************************
 //CODIGO DEL SEGUIDOR AQUI
 //********************************************************************************************************************************************
@@ -419,10 +411,9 @@ void track_the_sun(float latitude, float longitude) {
         digitalWrite(2,LOW);
         //delay(100);
         //pinMode(2,INPUT);
-        delay(90000); // The arduino should sleep instead of wait 90 seconds.
         digitalWrite(7, LOW);
     }
-    Serial.println("if completed");
+    Serial.println("Tracking Completed");
     //Serial.println("OK");
     delay(1000);
     //esperamos que arduino UNO termine su transferencia
@@ -433,7 +424,7 @@ void track_the_sun(float latitude, float longitude) {
     //}
     //Apagamos arduino Uno y M2M
 //********************************************************************************************************************************************
-//FIN CODIGO
+//FIN CODIGO|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 //********************************************************************************************************************************************
     sleepNow();     // sleep function called here
 }
