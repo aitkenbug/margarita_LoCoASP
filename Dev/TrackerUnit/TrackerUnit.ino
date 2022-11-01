@@ -1,7 +1,7 @@
 #include <avr/sleep.h> // Libreria para Sleep
+#include <Servo.h> // Libreria Servo
 #include <DS3231.h> // Libreria reloj con alarma
 #include <Wire.h> // Libreria control I2C
-#include <Servo.h> // Libreria Servo
 
 //Declaracion Servos
 Servo myservo1;
@@ -11,40 +11,20 @@ Servo myservo2;
 DS3231 Clock;
 RTClib myRTC; //Raro... investigar como usar .now()@pp
 // Variables del reloj
-bool A1Dy, A1h12, A1PM;
-
-bool Century = false;
-bool h12;
-bool PM;
-bool ADy, A12h, Apm;
-byte A1Day, A1Hour, A1Minute, A1Second, AlarmBits;
-byte ADay, AHour, AMinute, ASecond, ABits;
-int second, minute, hour, day, month, year; //pa que float? xD
-int daynum[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
-
-
+uint8_t second = 0, minute = 0, hour = 0,
+        day = 0, month = 0, year = 0; //pa que float? xD // pa que int? xD
 
 //Pin usado para depertarse
 int wakePin = 2;                 // pin used for waking up
 int sleepStatus = 0;             // variable to store a request for sleep
-int count = 0;                   // counter
-
-//If you live in the southern hemisphere, it would probably be easier
-//for you if you make north as the direction where the azimuth equals
-//0 degrees. To do so, switch the 0 below with 180.  
-float northOrSouth = 180;
-float pi = 3.14159265;
-
-//Seguidor
-// Variables seguidor
-int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
-int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
-int hor = 0, ver = 0, hor0 = 0, ver0 = 0; 
 
 unsigned long tiempo = 0;
 bool convergencia = true;
 float tupper_lat = -33.458017, tupper_lng = -70.661989;
-
+struct coordinates {
+       float azimuth;
+       float elevation;
+};
 
 void wakeUpNow() {       // here the interrupt is handled after wakeup
     // execute code here after wake-up before returning to the loop() function
@@ -59,7 +39,7 @@ void setup() {
     Wire.begin();
     Serial.begin(115200);
 
-    Serial.println("Attaching servos");
+    Serial.println(F("Attaching servos"));
     myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
     myservo2.attach(10);
 
@@ -149,78 +129,45 @@ void loop() {
     //float latitude = -33.5622523;float longitude = -70.603821799; float timezone = 0;
     // Valle Nevado
     //float latitude = -33.44888969;//float longitude = -70.6692655;
-    track_the_sun(tupper_lat, tupper_lng);
+    update_date_and_time();
+    set_next_alarm(minute);
+    //START OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
+    Serial.println(F("Sun Check Start"));
+    struct coordinates sun;
+    sun = get_sun_position(tupper_lat, tupper_lng, month, day, hour, minute);
+    //END OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
+    track_the_sun(sun.azimuth, sun.elevation);
 }
 
-float get_sun_position(float latitude, float longitude, int month, int day) {
-    float azimuth = 0.0, delta = 0.0, h = 0.0, elevation = 0.0, timezone = 0.0;
-    float two_pi = 2*pi;
-    float rad2deg = 180/pi;
-    float deg2rad = pi/180;
-    latitude = latitude * deg2rad;
-    float sin_lat = sin(latitude);
-    float cos_lat = cos(latitude);
-    float n = daynum[month-1] + day;//NUMBER OF DAYS SINCE THE START OF THE YEAR. 
-    delta = .409279 * sin(two_pi * ((284 + n)/365.25));//SUN'S DECLINATION.
-    float sin_delta = sin(delta);
-    float cos_delta = cos(delta);
-    day = dayToArrayNum(day);//TAKES THE CURRENT DAY OF THE MONTH AND CHANGES IT TO A LOOK UP VALUE ON THE HOUR ANGLE TABLE.
-    h = (FindH(day,month)) + longitude + (timezone * -15);//FINDS THE NOON HOUR ANGLE ON THE TABLE AND MODIFIES IT FOR THE USER'S OWN LOCATION AND TIME ZONE.
-    h = ((((hour + minute/60) - 12) * 15) + h)*deg2rad;//FURTHER MODIFIES THE NOON HOUR ANGLE OF THE CURRENT DAY AND TURNS IT INTO THE HOUR ANGLE FOR THE CURRENT HOUR AND MINUTE.
-    float cos_h = cos(h);
-    elevation = (asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h))*rad2deg;//FINDS THE SUN'S ALTITUDE.
-    azimuth = ((atan2((sin(h)),((cos_h * sin_lat) - sin_delta/cos_delta * cos_lat))) + (northOrSouth*deg2rad)) *rad2deg;//FINDS THE SUN'S AZIMUTH.
-    //azimuth = asin((-sin(h)*cos(delta))/sin(altitude));
-    //azimuth = acos((sin(delta) - cos(altitude*pi/180)*sin(latitude))/(sin(altitude*pi/180)*cos(latitude)));
-    Serial.print(" Azimuth: ");
-    Serial.print(azimuth);
-    Serial.print(" Elevation: ");
-    Serial.print(elevation);
-    Serial.print(" Delta: ");
-    Serial.print(delta);
-    Serial.print(" h: ");
-    Serial.print(h);
-    Serial.print(" n: ");
-    Serial.print(n);
-    Serial.print(" month: ");
-    Serial.print(month);
-    Serial.print(" daynum: ");
-    Serial.println(daynum[month-1]);
-    return azimuth, elevation;
-}
-
-void track_the_sun(float latitude, float longitude) {
-    float azimuth = 0.0, elevation = 0.0;
-    float correctaz = 0.0, correctel = 0.0;
-    int sensor0 = 0, sensor1 = 0, sensor2 = 0, sensor3 = 0;
-    int suma = 0, comb01 = 0, comb32 = 0, comb03 = 0, comb12 = 0;
-    int factor_s = 1;
+void update_date_and_time() {
     //////////////////////////////////////////////////  
     //codigo mágico que pone en high la alarma
     //Revision precencia de alarma
-    Serial.println("Loop Start");
+    Serial.println(F("Loop Start"));
     Clock.checkIfAlarm(1);
-    Serial.println("Alarm Check");
+    Serial.println(F("Alarm Check"));
     delay(1000);
 
-    Serial.println("delay1");
+    Serial.println(F("delay1"));
 
-    Serial.println("myRTC");
+    Serial.println(F("myRTC"));
     // Variables del reloj
     Clock.checkIfAlarm(1); //clears the Alarm1 register
     Clock.turnOnAlarm(1);
 
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
-    second = (uint8_t)Clock.getSecond();
+    second = (uint8_t)Clock.getSecond(); // Is it used?
     minute = (uint8_t)Clock.getMinute();
     hour = (uint8_t)Clock.getHour(fse, fse);
     day = (uint8_t)Clock.getDate();
     month = (uint8_t)Clock.getMonth(fse);
-    year = (uint8_t)Clock.getYear(); //get current time
+    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used?
+}
 
+void set_next_alarm(uint8_t minute) {
     Clock.setA1Time(byte(0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
 
-    Serial.print("Next alarm set: ");
+    Serial.print(F("Next alarm set: "));
     Serial.print((minute + 5) % 60);
     Serial.print("/");
     Serial.println(Clock.checkAlarmEnabled(1));
@@ -228,16 +175,58 @@ void track_the_sun(float latitude, float longitude) {
     // https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
     // un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
     delay(100);
+}
 
-    //START OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
-    //for (int hour=0; hour <= 23; hour++) {
-    Serial.println("Sun Check Start");
-    Serial.print("Hour: ");
-    Serial.print(hour);
-    azimuth, elevation = get_sun_position(latitude, longitude, month, day);
+struct coordinates get_sun_position(float latitude, float longitude, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute) {
+    //If you live in the southern hemisphere, it would probably be easier
+    //for you if you make north as the direction where the azimuth equals
+    //0 degrees. To do so, switch the 0 below with 180.  
+    float northOrSouth = 180;
+    float pi = 3.14159265;
+    struct coordinates angles;
+    int daynum[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+    float delta = 0.0, h = 0.0, timezone = 0.0;
+    float two_pi = 2*pi;
+    float rad2deg = 180/pi;
+    float deg2rad = pi/180;
+    latitude = latitude * deg2rad;
+    float sin_lat = sin(latitude);
+    float cos_lat = cos(latitude);
+    float n = daynum[month-1] + day;//NUMBER OF DAYS SINCE THE START OF THE YEAR. 
+    delta = .409279 * sin(two_pi * (284 + n)/365.25);//SUN'S DECLINATION.
+    float sin_delta = sin(delta);
+    float cos_delta = cos(delta);
+    day = dayToArrayNum(day);//TAKES THE CURRENT DAY OF THE MONTH AND CHANGES IT TO A LOOK UP VALUE ON THE HOUR ANGLE TABLE.
+    h = FindH(day,month) + longitude + (timezone * -15);//FINDS THE NOON HOUR ANGLE ON THE TABLE AND MODIFIES IT FOR THE USER'S OWN LOCATION AND TIME ZONE.
+    h = ((((hour + minute/60) - 12) * 15) + h)*deg2rad;//FURTHER MODIFIES THE NOON HOUR ANGLE OF THE CURRENT DAY AND TURNS IT INTO THE HOUR ANGLE FOR THE CURRENT HOUR AND MINUTE.
+    float cos_h = cos(h);
+    angles.elevation = (asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h))*rad2deg;//FINDS THE SUN'S ALTITUDE.
+    angles.azimuth = (atan2((sin(h)),((cos_h * sin_lat) - sin_delta/cos_delta * cos_lat)))*rad2deg + northOrSouth;//FINDS THE SUN'S AZIMUTH.
+    Serial.print(F(" Azimuth: "));
+    Serial.print(angles.azimuth);
+    Serial.print(F(" Elevation: "));
+    Serial.print(angles.elevation);
+    Serial.print(F(" Delta: "));
+    Serial.print(delta);
+    Serial.print(F(" h: "));
+    Serial.print(h);
+    Serial.print(F(" n: "));
+    Serial.print(n);
+    Serial.print(F(" month: "));
+    Serial.print(month);
+    Serial.print(F(" daynum: "));
+    Serial.println(daynum[month-1]);
+    return angles;
+}
 
-    //}
-    //END OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
+void track_the_sun(float azimuth, float elevation) {
+    float correctaz = 0.0, correctel = 0.0;
+    int sensor0 = 0, sensor1 = 0, sensor2 = 0, sensor3 = 0;
+    int suma = 0, comb01 = 0, comb32 = 0, comb03 = 0, comb12 = 0;
+    int factor_s = 1;
+    int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
+    int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
+    int hor = 0, ver = 0, hor0 = 0, ver0 = 0; 
   
     if ((azimuth >= 0) && (azimuth <= 90)) {
         correctaz = int(90 - azimuth);
@@ -255,7 +244,7 @@ void track_the_sun(float latitude, float longitude) {
 
     myservo1.writeMicroseconds(sec(int(correctaz)));
     myservo2.writeMicroseconds(sec(int(correctel)));
-    Serial.println("Rough position calculated");
+    Serial.println(F("Rough position calculated"));
     delay(3000);
 
     hor = int(correctaz);
@@ -265,7 +254,7 @@ void track_the_sun(float latitude, float longitude) {
     delay(100);
     Serial.println(ver0);
 
-    Serial.println("Starting Peripherals");
+    Serial.println(F("Starting Peripherals"));
 //********************************************************************************************************************************************
 //CODIGO DEL SEGUIDOR AQUI
 //********************************************************************************************************************************************
@@ -299,7 +288,7 @@ void track_the_sun(float latitude, float longitude) {
         x0 = 1; // Inicializamos el elemento derivativo
         y0 = 1;
         tiempo = millis();
-        Serial.println("Starting Tracker");
+        Serial.println(F("Starting Tracker"));
 
         bool test_found = false;
 
@@ -322,13 +311,13 @@ void track_the_sun(float latitude, float longitude) {
             comb32 = sensor3 + sensor2;
             comb03 = sensor0 + sensor3;
             comb12 = sensor1 + sensor2;
-            Serial.print("Sensor 0: ");
+            Serial.print(F("Sensor 0: "));
             Serial.print(sensor0);
-            Serial.print("    Sensor 1: ");
+            Serial.print(F("    Sensor 1: "));
             Serial.print(sensor1);
-            Serial.print("    Sensor 2: ");
+            Serial.print(F("    Sensor 2: "));
             Serial.print(sensor2);
-            Serial.print("    Sensor 3: ");
+            Serial.print(F("    Sensor 3: "));
             Serial.println(sensor3);
 
             // Comparamos entradas opuesta y desacoplamos las respuestas
@@ -408,12 +397,12 @@ void track_the_sun(float latitude, float longitude) {
         // Apagamos la energia de los motores
         digitalWrite(4, LOW);
         //informamos al arduino UNO que termina la medición
-        digitalWrite(2,LOW);
+        digitalWrite(2, LOW);
         //delay(100);
         //pinMode(2,INPUT);
         digitalWrite(7, LOW);
     }
-    Serial.println("Tracking Completed");
+    Serial.println(F("Tracking Completed"));
     //Serial.println("OK");
     delay(1000);
     //esperamos que arduino UNO termine su transferencia
