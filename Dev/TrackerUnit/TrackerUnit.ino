@@ -147,19 +147,18 @@ void update_date_and_time() {
     Serial.println("Alarm Check");
     delay(1000);
 
-    Clock.checkIfAlarm(1); //clears the Alarm1 register
-    Clock.turnOnAlarm(1);
-
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
     second = (uint8_t)Clock.getSecond(); // Is it used?
     minute = (uint8_t)Clock.getMinute();
     hour = (uint8_t)Clock.getHour(fse, fse);
     day = (uint8_t)Clock.getDate();
     month = (uint8_t)Clock.getMonth(fse);
-    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used?
+    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used? 
 }
 
 void set_next_alarm(uint8_t minute) {
+    Clock.checkIfAlarm(1); //clears the Alarm1 register
+
     Clock.setA1Time(byte(0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
 
     Serial.print(F("Next alarm set: "));
@@ -167,6 +166,7 @@ void set_next_alarm(uint8_t minute) {
     Serial.print("/");
     Serial.println(Clock.checkAlarmEnabled(1));
 
+    Clock.turnOnAlarm(1);
     delay(100);
 }
 
