@@ -199,14 +199,9 @@ void track_the_sun(float latitude, float longitude) {
     //codigo mágico que pone en high la alarma
     //Revision precencia de alarma
     Serial.println("Loop Start");
-    Clock.checkIfAlarm(1);
     Serial.println("Alarm Check");
     delay(1000);
 
-    Serial.println("delay1");
-
-    Serial.println("myRTC");
-    // Variables del reloj
     Clock.checkIfAlarm(1); //clears the Alarm1 register
     Clock.turnOnAlarm(1);
 
@@ -225,8 +220,6 @@ void track_the_sun(float latitude, float longitude) {
     Serial.print("/");
     Serial.println(Clock.checkAlarmEnabled(1));
 
-    // https://stackoverflow.com/questions/4622225/arent-boolean-variables-always-false-by-default
-    // un bool vacío como h12 y pm es falso son variables que agregó el codigo de prueba para hacer la librería entendible
     delay(100);
 
     //START OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
