@@ -403,7 +403,7 @@ void track_the_sun(float latitude, float longitude) {
             //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
             myservo2.writeMicroseconds(sec(ver0));
             myservo1.writeMicroseconds(sec(hor0));
-            delay(20);
+            delay(5);
             // waits for the servo to get there
         }
         // Ramp-down
