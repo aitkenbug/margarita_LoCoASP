@@ -39,9 +39,9 @@ void setup() {
     Wire.begin();
     Serial.begin(115200);
 
-    Serial.println(F("Attaching servos"));
-    myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
-    myservo2.attach(10);
+    //Serial.println(F("Attaching servos"));
+    //myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    //myservo2.attach(10);
 
     /* Now it is time to enable an interrupt. In the function call
        attachInterrupt(A, B, C)
@@ -220,7 +220,11 @@ void track_the_sun(float azimuth, float elevation) {
     int factor_s = 1;
     int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
     int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
-    int hor = 0, ver = 0, hor0 = 0, ver0 = 0; 
+    int hor = 0, ver = 0, hor0 = 0, ver0 = 0;
+
+    Serial.println(F("Attaching servos"));
+    myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    myservo2.attach(10);
   
     if ((azimuth >= 0) && (azimuth <= 90)) {
         correctaz = int(90 - azimuth);
