@@ -23,14 +23,14 @@ static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-cod
 char gps_data[50] = {0};
 
 TinyGPSPlus gps; // GPS object.
-SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS ss(rx,tx)
+SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS
 
 void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
     delay(1500);
     Serial.println(F("Initializing the GPS module..."));
-    ss.begin(GPSBaud);
+    ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
     Serial.println(F("Done.\nTesting the code..."));
     test_GPS();
     Serial.println(F("Done.\nTesting the GPS module..."));
