@@ -125,18 +125,16 @@ void GPS(struct instrumentStructure *instrumentData) {
     instrumentData->gps_lng = random(-720000, -690000)*0.0001;
     instrumentData->gps_day = random(1, 32);
     instrumentData->gps_month = random(1, 13);
-    instrumentData->gps_year = random(2022, 2025);
+    instrumentData->gps_year = random(2023, 2026);
     instrumentData->gps_hour = random(0, 24);
     instrumentData->gps_minute = random(0, 61);
     instrumentData->gps_second = random(0, 61);
-    instrumentData->gps_alt = random(40000, 60000)*0.01;
+    instrumentData->gps_alt = random(0, 550000)*0.01;
 }
 
 void BMP(struct instrumentStructure *instrumentData) {
     //BMP180 data gathering. IC out of production, would be wise to replace.
     uint8_t wait = 0;
-
-    //memset(&bmp_data[0], 0, sizeof(bmp_data));
     wait = random(0,300);
     delay(wait);
 
@@ -144,8 +142,8 @@ void BMP(struct instrumentStructure *instrumentData) {
     wait = random(0,300);
     delay(wait);
 
-    instrumentData->bmp_pres = random(91000, 98000)*0.01;
-    instrumentData->bmp_alt = random(40000, 60000)*0.01;
+    instrumentData->bmp_pres = random(40000, 101300)*0.01;
+    instrumentData->bmp_alt = random(0, 550000)*0.01;
 }
 
 String data2csv(struct instrumentStructure *instrumentData) {
