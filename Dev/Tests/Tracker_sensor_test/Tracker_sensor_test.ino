@@ -1,3 +1,20 @@
+// ------------------------------------------------------------------------------------------------------------------
+//      __  ___                            _ __              __          ______      ___   _____ ____ 
+//     /  |/  /___ __________ _____ ______(_) /_____ _      / /   ____  / ____/___  /   | / ___// __ \
+//    / /|_/ / __ `/ ___/ __ `/ __ `/ ___/ / __/ __ `/_____/ /   / __ \/ /   / __ \/ /| | \__ \/ /_/ /
+//   / /  / / /_/ / /  / /_/ / /_/ / /  / / /_/ /_/ /_____/ /___/ /_/ / /___/ /_/ / ___ |___/ / _, _/ 
+//  /_/  /_/\__,_/_/   \__, /\__,_/_/  /_/\__/\__,_/     /_____/\____/\____/\____/_/  |_/____/_/ |_|  
+//                    /____/                                                                          
+// ------------------------------------------------------------------------------------------------------------------
+// Second Generation Low-Cost Automatic Sun Photometer for scale-oriented measurements of Aerosol Optical Depth (AOD)
+// Space and Planetary Exploration Laboratory, Faculty of Physical and Matemathical Sciences, University of Chile
+// ------------------------------------------------------------------------------------------------------------------
+// First generation developement by Cristobal Garrido and MCI Electronics
+// Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
+// ------------------------------------------------------------------------------------------------------------------
+// Tracker_sensor_test.ino > Photometer Instrument Unit
+// Firmware for Tracker Unit - Arduino Uno / ESP32
+
 void setup() {
     delay(1500);
     Serial.begin(115200);
