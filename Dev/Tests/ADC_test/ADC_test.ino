@@ -32,7 +32,24 @@
 #define SPICLOCK 13 // CLK
 #define CTRL_Z 26 // termino
 
-char sensor_data[30] = {0};
+struct instrumentStructure {
+    int led1 = 0;
+    int led2 = 0;
+    int led3 = 0;
+    int led4 = 0;
+    double gps_lat = 0.0;
+    double gps_lng = 0.0;
+    int gps_day = 0;
+    int gps_month = 0;
+    int gps_year = 0;
+    int gps_hour = 0;
+    int gps_minute = 0;
+    int gps_second = 0;
+    float gps_alt = 0.0;
+    double bmp_temp = 0.0;
+    double bmp_pres = 0.0;
+    double bmp_alt = 0.0;
+};
 
 void setup() {
     pinMode(trackerTrigger, INPUT);
@@ -41,9 +58,7 @@ void setup() {
     delay(1500);
     Serial.println(F("Testing the ADC MCP3204-BVSL..."));
     SPI.begin();
-}
-
-void loop() {
+    Serial.println(F("Reading individual channels..."));
     Serial.print(F("ADC CH1: "));
     Serial.print(read_ADC(1));
     Serial.print(F("  CH2: "));
@@ -52,60 +67,45 @@ void loop() {
     Serial.print(read_ADC(3));
     Serial.print(F("  CH4: "));
     Serial.println(read_ADC(4));
+    Serial.println(F("Done."));
+    Serial.println(F("Starting full test..."));
+}
+
+void loop() {
+    struct instrumentStructure instrumentData;
     data();
+    Serial.println(data2csv(&instrumentData));
     delay(100);
 }
 
-String data() {
+void data() {
     //Sensor data processing and collation.
-    int readvalue = 0, data1 = 0, data2 = 0, data3 = 0, data4 = 0;
-    memset(&sensor_data[0], 0, sizeof(sensor_data));
+    int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
-    while (digitalRead(A2)) {//Second check of A2 (?)
+    while (digitalRead(trackerTrigger)) {
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(1);
-        if (data1 <= readvalue) {
-            data1 = readvalue;
+        if (instrumentData->led1 <= readvalue) {
+            instrumentData->led1 = readvalue;
         }
 
         readvalue = read_ADC(2);
-        if (data2 <= readvalue) {
-            data2 = readvalue;
+        if (instrumentData->led2 <= readvalue) {
+            instrumentData->led2 = readvalue;
         }
 
         readvalue = read_ADC(3);
-        if (data3 <= readvalue) {
-            data3 = readvalue;
+        if (instrumentData->led3 <= readvalue) {
+            instrumentData->led3 = readvalue;
         }
 
         readvalue = read_ADC(4);
-        if (data4 <= readvalue) {
-            data4 = readvalue;
+        if (instrumentData->led4 <= readvalue) {
+            instrumentData->led4 = readvalue;
         }
         SPI.endTransaction();
     }
-    sprintf(sensor_data, ",%d,%d,%d,%d", data1, data2, data3, data4);
-    Serial.print(F("Sensor data: "));
-    Serial.println(sensor_data);
-    return sensor_data;
 }
-/*
-int read_ADC(int channel) {
-    byte adcPrimaryConfig =0x06; //setup byte
-    byte adcSecondaryConfig = channel << 6;
-    byte adcPrimaryByteMask = 0b00001111;      // b00001111 isolates the 4 LSB for the value returned. 
-    noInterrupts(); // disable interupts to prepare to send address data to the ADC.  
-    digitalWrite(CS_ADC, LOW); // take the Chip Select pin low to select the ADC.
-    SPI.transfer(adcPrimaryConfig); //  send in the primary configuration address byte to the ADC.  
-    byte adcPrimaryByte = SPI.transfer(adcSecondaryConfig); // read the primary byte, also sending in the secondary address byte.  
-    byte adcSecondaryByte = SPI.transfer(0x00); // read the secondary byte, also sending 0 as this doesn't matter. 
-    digitalWrite(CS_ADC, HIGH); // take the Chip Select pin high to de-select the ADC.
-    interrupts(); // Enable interupts.
-    adcPrimaryByte &= adcPrimaryByteMask; // Limits the value of the primary byte to the 4 LSB:
-    int digitalValue = (adcPrimaryByte << 8) | adcSecondaryByte; // Shifts the 4 LSB of the primary byte to become the 4 MSB of the 12 bit digital value, this is then ORed to the secondary byte value that holds the 8 LSB of the digital value.
-    return digitalValue; // Returns the value from the function
-}
-*/
 
 int read_ADC(int channel) {
     //ADC SPI interface
@@ -121,36 +121,50 @@ int read_ADC(int channel) {
     return adcValue;
 }
 
-/*
-int read_ADC(int channel) {
-  int adcvalue = 0;
-  byte commandbits = B11000000; //command bits - start, mode, chn (3), dont care (3)
+String data2csv(struct instrumentStructure *instrumentData) {
+    char data_CSV[110] = {0};
+    char lat_str[8], lng_str[8], gps_alt_str[8];
+    char temp_str[6], pres_str[7], bmp_alt_str[8];
 
-  //allow channel selection
-  commandbits |= ((channel - 1) << 3);
+    dtostrf(abs(instrumentData->gps_lat), 7, 4, lat_str);
+    if (abs(instrumentData->gps_lng) >= 100.0)
+        dtostrf(abs(instrumentData->gps_lng), 8, 4, lng_str);
+    else
+        dtostrf(abs(instrumentData->gps_lng), 7, 4, lng_str);
+    if (instrumentData->gps_alt >= 1000)
+        dtostrf(instrumentData->gps_alt, 7, 2, gps_alt_str);
+    else
+        dtostrf(instrumentData->gps_alt, 6, 2, gps_alt_str);
 
-  digitalWrite(SELPIN, LOW); //Select adc
-  // setup bits to be written
-  for (int i = 7; i >= 3; i--) {
-    digitalWrite(DATAOUT, commandbits & 1 << i);
-    //cycle clock
-    digitalWrite(SPICLOCK, HIGH);
-    digitalWrite(SPICLOCK, LOW);
-  }
+    if (abs(instrumentData->bmp_temp) < 10)
+        dtostrf(instrumentData->bmp_temp, 4, 2, temp_str);
+    else
+        dtostrf(instrumentData->bmp_temp, 5, 2, temp_str);
+    dtostrf(instrumentData->bmp_pres, 6, 2, pres_str);
+    if (instrumentData->bmp_alt >= 1000.0)
+        dtostrf(instrumentData->bmp_alt, 7, 2, bmp_alt_str);
+    else
+        dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-  digitalWrite(SPICLOCK, HIGH);   //ignores 2 null bits
-  digitalWrite(SPICLOCK, LOW);
-  digitalWrite(SPICLOCK, HIGH);
-  digitalWrite(SPICLOCK, LOW);
-
-  //read bits from adc
-  for (int i = 11; i >= 0; i--) {
-    adcvalue += digitalRead(DATAIN) << i;
-    //cycle clock
-    digitalWrite(SPICLOCK, HIGH);
-    digitalWrite(SPICLOCK, LOW);
-  }
-  digitalWrite(SELPIN, HIGH); //turn off device
-  return adcvalue;
+    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
+                                                                                   instrumentData->led2,
+                                                                                   instrumentData->led3,
+                                                                                   instrumentData->led4,
+                                                                                   lat_str,
+                                                                                   'S'-5*(instrumentData->gps_lat > 0),
+                                                                                   lng_str,
+                                                                                   'W'-18*(instrumentData->gps_lng > 0),
+                                                                                   instrumentData->gps_day,
+                                                                                   instrumentData->gps_month,
+                                                                                   instrumentData->gps_year,
+                                                                                   instrumentData->gps_hour,
+                                                                                   instrumentData->gps_minute,
+                                                                                   instrumentData->gps_second,
+                                                                                   gps_alt_str,
+                                                                                   temp_str,
+                                                                                   pres_str,
+                                                                                   bmp_alt_str);
+    Serial.print(F("All data: "));
+    Serial.println(data_CSV);
+    return data_CSV;
 }
-*/

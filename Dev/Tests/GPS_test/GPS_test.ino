@@ -19,107 +19,132 @@
 #include <TinyGPS++.h> // GPS Library, to be replaced by raw NMEA commands.
 #include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
 
-static const uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
-char gps_data[50] = {0};
+#ifdef ESP32
+    #define trackerTrigger 21
+    SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS ss(rx,tx)
+#else
+    #define trackerTrigger A2
+    SoftwareSerial ss(3, 3); // Conexion serial para conectarse al GPS ss(rx,tx)
 
 TinyGPSPlus gps; // GPS object.
-SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS
+
+static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
+struct instrumentStructure {
+    int led1 = 0;
+    int led2 = 0;
+    int led3 = 0;
+    int led4 = 0;
+    double gps_lat = 0.0;
+    double gps_lng = 0.0;
+    int gps_day = 0;
+    int gps_month = 0;
+    int gps_year = 0;
+    int gps_hour = 0;
+    int gps_minute = 0;
+    int gps_second = 0;
+    float gps_alt = 0.0;
+    double bmp_temp = 0.0;
+    double bmp_pres = 0.0;
+    double bmp_alt = 0.0;
+};
 
 void setup() {
-    // put your setup code here, to run once:
-    Serial.begin(115200);
     delay(1500);
+    Serial.begin(115200);
     Serial.println(F("Initializing the GPS module..."));
     ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
     Serial.println(F("Done.\nTesting the code..."));
-    test_GPS();
+    for (int i=0; i < 10; i++) {
+        GPS_sw_test(&instrumentData);
+        Serial.println(data2csv(&instrumentData));
+    }
     Serial.println(F("Done.\nTesting the GPS module..."));
 }
 
 void loop() {
-    Serial.println(GPS());
+    GPS(&instrumentData);
+    Serial.println(data2csv(&instrumentData));
     delay(500);
 }
 
-String GPS() {
+void GPS_sw_test(struct instrumentStructure *instrumentData) {
+    instrumentData->gps_lat = random(-340000, -320000)*0.0001;
+    instrumentData->gps_lng = random(-720000, -690000)*0.0001;
+    instrumentData->gps_day = random(1, 32);
+    instrumentData->gps_month = random(1, 13);
+    instrumentData->gps_year = random(2023, 2026);
+    instrumentData->gps_hour = random(0, 24);
+    instrumentData->gps_minute = random(0, 61);
+    instrumentData->gps_second = random(0, 61);
+    instrumentData->gps_alt = random(0, 550000)*0.01;
+}
+
+void GPS(struct instrumentStructure *instrumentData) {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    char lat_str[8], lng_str[8], alt_str[8];
-    float lat = 0.0, lng = 0.0, alt = 0.0;
-    memset(&gps_data[0], 0, sizeof(gps_data));
-    unsigned long tiempo = millis(); //El tiempo de inicio para marcar
-    while (millis() < tiempo + 1000) {
+    unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
+    while (millis() < timeout) {
         while (ss.available() > 0) {
             if (gps.encode(ss.read())) {
                 if (gps.location.isValid()) {
-                // isValid checks for the complete GPRMC frame.
-                    lat = gps.location.lat();
-                    lng = gps.location.lng();
-                    alt = gps.altitude.meters();
-                    dtostrf(abs(lat), 7, 4, lat_str);
-                    if (abs(lng) >= 100.0)
-                        dtostrf(abs(lng), 8, 4, lng_str);
-                    else
-                        dtostrf(abs(lng), 7, 4, lng_str);
-                    if (alt >= 1000)
-                        dtostrf(alt, 7, 2, alt_str);
-                    else
-                        dtostrf(alt, 6, 2, alt_str);
-                    sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s", lat_str, 'S'-5*(lat > 0),
-                                                                           lng_str, 'W'-18*(lng > 0),
-                                                                           gps.date.day(),
-                                                                           gps.date.month(),
-                                                                           gps.date.year(),
-                                                                           gps.time.hour(),
-                                                                           gps.time.minute(),
-                                                                           gps.time.second(),
-                                                                           alt_str);
+                    // isValid checks for the complete GPRMC frame.
+                    instrumentData->gps_lat = gps.location.lat();
+                    instrumentData->gps_lng = gps.location.lng();
+                    instrumentData->gps_day = gps.date.day();
+                    instrumentData->gps_month = gps.date.month();
+                    instrumentData->gps_year = gps.date.year();
+                    instrumentData->gps_hour = gps.time.hour();
+                    instrumentData->gps_minute = gps.time.minute();
+                    instrumentData->gps_second = gps.time.second();
+                    instrumentData->gps_alt = (float)gps.altitude.meters();
                     break;
                 }
             }
         }
     }
-    Serial.print(F("GPS data: "));
-    Serial.println(gps_data);
-    return gps_data;
 }
 
-void test_GPS() {
-    char lat_str[8], lng_str[8], alt_str[8];
-    float lat = 0.0, lng = 0.0, alt = 0.0;
-    Serial.println(F("Testing the GPS string generator: "));
-    memset(&gps_data[0], 0, sizeof(gps_data));
-    // A sample NMEA stream.
-    const char *gpsStream =
-      "$GPRMC,045103.000,A,3014.1984,N,09749.2872,W,0.67,161.46,030913,,,A*7C\r\n"
-      "$GPGGA,045104.000,3014.1985,N,09749.2873,W,1,09,1.2,211.6,M,-22.5,M,,0000*62\r\n"
-      "$GPRMC,045200.000,A,3014.3820,N,09748.9514,W,36.88,65.02,030913,,,A*77\r\n"
-      "$GPGGA,045201.000,3014.3864,N,09748.9411,W,1,10,1.2,200.8,M,-22.5,M,,0000*6C\r\n"
-      "$GPRMC,045251.000,A,3014.4275,N,09749.0626,W,0.51,217.94,030913,,,A*7D\r\n"
-      "$GPGGA,045252.000,3014.4273,N,09749.0628,W,1,09,1.3,206.9,M,-22.5,M,,0000*6F\r\n";
-    while (*gpsStream) {
-        if (gps.encode(*gpsStream++)) {
-            lat = gps.location.lat();
-            lng = gps.location.lng();
-            alt = gps.altitude.meters();
-            dtostrf(abs(lat), 7, 4, lat_str);
-            if (abs(lng) >= 100.0)
-                dtostrf(abs(lng), 8, 4, lng_str);
-            else
-                dtostrf(abs(lng), 7, 4, lng_str);
-            if (alt >= 1000)
-                dtostrf(alt, 7, 2, alt_str);
-            else
-                dtostrf(alt, 6, 2, alt_str);
-            sprintf(gps_data, ",%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s", lat_str, 'S'-5*(lat > 0),
-                                                                   lng_str, 'W'-18*(lng > 0),
-                                                                   gps.date.day(),
-                                                                   gps.date.month(),
-                                                                   gps.date.year(),
-                                                                   gps.time.hour(),
-                                                                   gps.time.minute(),
-                                                                   gps.time.second(),
-                                                                   alt_str);
-            Serial.println(gps_data);
-        }
-    }
+String data2csv(struct instrumentStructure *instrumentData) {
+    char data_CSV[110] = {0};
+    char lat_str[8], lng_str[8], gps_alt_str[8];
+    char temp_str[6], pres_str[7], bmp_alt_str[8];
+
+    dtostrf(abs(instrumentData->gps_lat), 7, 4, lat_str);
+    if (abs(instrumentData->gps_lng) >= 100.0)
+        dtostrf(abs(instrumentData->gps_lng), 8, 4, lng_str);
+    else
+        dtostrf(abs(instrumentData->gps_lng), 7, 4, lng_str);
+    if (instrumentData->gps_alt >= 1000)
+        dtostrf(instrumentData->gps_alt, 7, 2, gps_alt_str);
+    else
+        dtostrf(instrumentData->gps_alt, 6, 2, gps_alt_str);
+
+    if (abs(instrumentData->bmp_temp) < 10)
+        dtostrf(instrumentData->bmp_temp, 4, 2, temp_str);
+    else
+        dtostrf(instrumentData->bmp_temp, 5, 2, temp_str);
+    dtostrf(instrumentData->bmp_pres, 6, 2, pres_str);
+    if (instrumentData->bmp_alt >= 1000.0)
+        dtostrf(instrumentData->bmp_alt, 7, 2, bmp_alt_str);
+    else
+        dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
+
+    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
+                                                                                   instrumentData->led2,
+                                                                                   instrumentData->led3,
+                                                                                   instrumentData->led4,
+                                                                                   lat_str,
+                                                                                   'S'-5*(instrumentData->gps_lat > 0),
+                                                                                   lng_str,
+                                                                                   'W'-18*(instrumentData->gps_lng > 0),
+                                                                                   instrumentData->gps_day,
+                                                                                   instrumentData->gps_month,
+                                                                                   instrumentData->gps_year,
+                                                                                   instrumentData->gps_hour,
+                                                                                   instrumentData->gps_minute,
+                                                                                   instrumentData->gps_second,
+                                                                                   gps_alt_str,
+                                                                                   temp_str,
+                                                                                   pres_str,
+                                                                                   bmp_alt_str);
+    return data_CSV;
 }
