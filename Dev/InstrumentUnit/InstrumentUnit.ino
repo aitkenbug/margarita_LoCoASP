@@ -172,7 +172,7 @@ void GPS(struct instrumentStructure *instrumentData) {
                     instrumentData->gps_minute = gps.time.minute();
                     instrumentData->gps_second = gps.time.second();
                     instrumentData->gps_alt = (float)gps.altitude.meters();
-	                break;
+	            break;
                 }
             }
         }
@@ -182,8 +182,6 @@ void GPS(struct instrumentStructure *instrumentData) {
 void BMP(struct instrumentStructure *instrumentData) {
     //BMP180 data gathering. IC out of production, would be wise to replace.
     uint8_t wait = 0;
-
-    //memset(&bmp_data[0], 0, sizeof(bmp_data));
     wait = pressure.startTemperature();
     delay(wait);
 
