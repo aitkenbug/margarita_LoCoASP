@@ -1,3 +1,20 @@
+// ------------------------------------------------------------------------------------------------------------------
+//      __  ___                            _ __              __          ______      ___   _____ ____
+//     /  |/  /___ __________ _____ ______(_) /_____ _      / /   ____  / ____/___  /   | / ___// __ \
+//    / /|_/ / __ `/ ___/ __ `/ __ `/ ___/ / __/ __ `/_____/ /   / __ \/ /   / __ \/ /| | \__ \/ /_/ /
+//   / /  / / /_/ / /  / /_/ / /_/ / /  / / /_/ /_/ /_____/ /___/ /_/ / /___/ /_/ / ___ |___/ / _, _/
+//  /_/  /_/\__,_/_/   \__, /\__,_/_/  /_/\__/\__,_/     /_____/\____/\____/\____/_/  |_/____/_/ |_|
+//                    /____/
+// ------------------------------------------------------------------------------------------------------------------
+// Second Generation Low-Cost Automatic Sun Photometer for scale-oriented measurements of Aerosol Optical Depth (AOD)
+// Space and Planetary Exploration Laboratory, Faculty of Physical and Matemathical Sciences, University of Chile
+// ------------------------------------------------------------------------------------------------------------------
+// First generation developement by Cristobal Garrido and MCI Electronics
+// Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
+// ------------------------------------------------------------------------------------------------------------------
+// INSTRUMENT.INO > Photometer Instrument Unit
+// Firmware for Instrument Unit - Arduino Uno / ESP32
+
 #include <avr/sleep.h> // Libreria para Sleep
 #include <Servo.h> // Libreria Servo
 #include <DS3231.h> // Libreria reloj con alarma
@@ -22,8 +39,8 @@ unsigned long tiempo = 0;
 bool convergencia = true;
 float tupper_lat = -33.458017, tupper_lng = -70.661989;
 struct coordinates {
-       float azimuth;
-       float elevation;
+   float azimuth;
+   float elevation;
 };
 
 void wakeUpNow() {       // here the interrupt is handled after wakeup
@@ -143,8 +160,7 @@ void update_date_and_time() {
     //////////////////////////////////////////////////  
     //codigo mágico que pone en high la alarma
     //Revision precencia de alarma
-    Serial.println("Loop Start");
-    Serial.println("Alarm Check");
+    Serial.println(F("Alarm Check"));
     delay(1000);
 
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
@@ -165,7 +181,7 @@ void set_next_alarm(uint8_t minute) {
 
     Serial.print(F("Next alarm set: "));
     Serial.print((minute + 5) % 60);
-    Serial.print("/");
+    Serial.print(F("/"));
     Serial.println(Clock.checkAlarmEnabled(1));
 
     delay(100);
@@ -194,22 +210,8 @@ struct coordinates get_sun_position(float latitude, float longitude, uint8_t mon
     h = FindH(day,month) + longitude + (timezone * -15);//FINDS THE NOON HOUR ANGLE ON THE TABLE AND MODIFIES IT FOR THE USER'S OWN LOCATION AND TIME ZONE.
     h = ((((hour + minute/60) - 12) * 15) + h)*deg2rad;//FURTHER MODIFIES THE NOON HOUR ANGLE OF THE CURRENT DAY AND TURNS IT INTO THE HOUR ANGLE FOR THE CURRENT HOUR AND MINUTE.
     float cos_h = cos(h);
-    angles.elevation = (asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h))*rad2deg;//FINDS THE SUN'S ALTITUDE.
-    angles.azimuth = (atan2((sin(h)),((cos_h * sin_lat) - sin_delta/cos_delta * cos_lat)))*rad2deg + northOrSouth;//FINDS THE SUN'S AZIMUTH.
-    Serial.print(F(" Azimuth: "));
-    Serial.print(angles.azimuth);
-    Serial.print(F(" Elevation: "));
-    Serial.print(angles.elevation);
-    Serial.print(F(" Delta: "));
-    Serial.print(delta);
-    Serial.print(F(" h: "));
-    Serial.print(h);
-    Serial.print(F(" n: "));
-    Serial.print(n);
-    Serial.print(F(" month: "));
-    Serial.print(month);
-    Serial.print(F(" daynum: "));
-    Serial.println(daynum[month-1]);
+    angles.elevation = asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h)*rad2deg;//FINDS THE SUN'S ALTITUDE.
+    angles.azimuth = atan2(sin(h), (cos_h * sin_lat) - sin_delta/cos_delta * cos_lat)*rad2deg + northOrSouth;//FINDS THE SUN'S AZIMUTH.
     return angles;
 }
 
@@ -249,7 +251,6 @@ void track_the_sun(float azimuth, float elevation) {
     ver = int(correctel);
     hor0 = int(correctaz);
     ver0 = int(correctel);
-    delay(100);
     Serial.println(ver0);
 
     Serial.println(F("Starting Peripherals"));
@@ -309,6 +310,7 @@ void track_the_sun(float azimuth, float elevation) {
             comb32 = sensor3 + sensor2;
             comb03 = sensor0 + sensor3;
             comb12 = sensor1 + sensor2;
+            /*
             Serial.print(F("Sensor 0: "));
             Serial.print(sensor0);
             Serial.print(F("    Sensor 1: "));
@@ -317,6 +319,10 @@ void track_the_sun(float azimuth, float elevation) {
             Serial.print(sensor2);
             Serial.print(F("    Sensor 3: "));
             Serial.println(sensor3);
+            */
+            char buffer[100] = {0};
+            sprintf(buffer, "Sensor 0: %d    Sensor 1: %d    Sensor2: %d    Sensor 3: %d", sensor0, sensor1, sensor2, sensor3);
+            Serial.println(buffer);
 
             // Comparamos entradas opuesta y desacoplamos las respuestas
             if (sensor0 >= sensor2) {
