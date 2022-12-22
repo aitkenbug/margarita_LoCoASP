@@ -402,7 +402,7 @@ void track_the_sun(float azimuth, float elevation) {
         digitalWrite(4, LOW);
         //informamos al arduino UNO que termina la medición
         digitalWrite(2, LOW);
-        //delay(100);
+        delay(35000);
         //pinMode(2,INPUT);
         digitalWrite(7, LOW);
     }
