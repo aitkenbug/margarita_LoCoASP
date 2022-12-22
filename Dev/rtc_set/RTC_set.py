@@ -1,3 +1,10 @@
+# Installation procedure
+# pip3 install everywhereml
+# sudo snap install arduino-cli
+# arduino-cli board listall
+# arduino-cli core install arduino:avr
+# arduino-cli lib install DS3231
+
 from everywhereml.arduino import Sketch, Ino, H
 from datetime import datetime
 
