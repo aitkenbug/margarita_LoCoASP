@@ -73,12 +73,12 @@ void setup() {
 
 void loop() {
     struct instrumentStructure instrumentData;
-    data();
+    data(&instrumentData);
     Serial.println(data2csv(&instrumentData));
-    delay(100);
+    delay(500);
 }
 
-void data() {
+void data(struct instrumentStructure *instrumentData) {
     //Sensor data processing and collation.
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
@@ -164,7 +164,5 @@ String data2csv(struct instrumentStructure *instrumentData) {
                                                                                    temp_str,
                                                                                    pres_str,
                                                                                    bmp_alt_str);
-    Serial.print(F("All data: "));
-    Serial.println(data_CSV);
     return data_CSV;
 }

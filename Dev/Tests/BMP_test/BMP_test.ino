@@ -47,7 +47,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println(F("Starting the software test..."));
     for (int i=0; i < 10; i++) {
-        BMP_test();
+        BMP_test(&instrumentData);
         Serial.println(data2csv(&instrumentData));
     }
     Serial.println(F("Done."));
