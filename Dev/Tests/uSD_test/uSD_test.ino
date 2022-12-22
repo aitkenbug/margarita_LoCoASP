@@ -13,29 +13,16 @@
 // Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
 // ------------------------------------------------------------------------------------------------------------------
 // INSTRUMENT.INO > Photometer Instrument Unit
-// Firmware for Instrument Unit - Arduino Uno
+// Firmware for Instrument Unit - Arduino Uno/ESP32
 
 
 //---LIBRARIES---
 #include <Arduino.h>        // For using the ESP32 with the Arduino IDE.
-#include <TinyGPSPlus.h>    // GPS Library, to be replaced by raw NMEA commands.
-#include <SFE_BMP180.h>     // BMP180 for pressure, altitude, and temperature of turret assembly.
-#include <Wire.h>           // I2C bus for BMP180
-#include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
 #include <SD.h>             // SD Card Library
 #include <SPI.h>            // Hardware SPI library for MCP3204 ADC.
 
-#ifdef ESP32
-    #define trackerTrigger 21
-#else
-    #define trackerTrigger A2
-#endif
 #define CS_ADC 4         // ADC chip select.
-#define CS_SD 8          //SD chip select. Matches hardware SPI bus implementation on 328P.
-
-SFE_BMP180 pressure;     // BMP180 object
-TinyGPSPlus gps;         // GPS object.
-SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
+#define CS_SD 10         //SD chip select. Matches hardware SPI bus implementation on 328P.
 
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
@@ -60,38 +47,24 @@ struct instrumentStructure {
 void setup() {
     delay(1000);
     struct instrumentStructure instrumentData;
-    pinMode(trackerTrigger, INPUT); //stop trigger from Tracker Unit init
     pinMode(CS_ADC, OUTPUT); // pinMode!!!
-    //debug UART, GPS softUART, BMP init
+    digitalWrite(CS_ADC, HIGH); //turn off device
     Serial.begin(115200);
-    Serial.print(F("Initiating software serial..."));
-    ss.begin(GPSBaud);
-    Serial.print(F(" Done.\nInitiating the BMP180..."));
-    pressure.begin();
-    Serial.println(F("      Done."));
-
-    //---MEASURING STARTS HERE---
-    Serial.print(F("Testing the structure..."));
+    Serial.println(F("Testing the structure..."));
     for (int i=0; i < 10; i++) {
         SPI.begin();
-        Serial.print(F("Measuring sensors..."));
         data(&instrumentData); //ADC data
-        Serial.println(F("          Done."));
         SPI.end();
         delay(100);
 
-        Serial.print(F("Reading the GPS module..."));
         GPS(&instrumentData); //GPS data
-        Serial.println(F("     Done."));
         delay(100);
 
-        Serial.print(F("Measuring with the BMP180..."));
         BMP(&instrumentData); //BMP180 data
-        Serial.println(F("  Done."));
         delay(100);
-        data2csv(&instrumentData);
+        Serial.println(data2csv(&instrumentData));
     }
-    Serial.println(F("      Done."));
+    Serial.println(F("Done."));
 
     SPI.begin();
     Serial.print(F("Initiating the uSD card..."));
@@ -130,8 +103,8 @@ void data(struct instrumentStructure *instrumentData) {
     //Sensor data processing and collation.
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
-    unsigned long timeout = millis() + 2000;
-    while (millis() < timeout) {//Second check of trackerTrigger (?)
+    unsigned long timeout = millis() + 1;
+    while (millis() < timeout) {
         readvalue = random(0, 4096);
         if (instrumentData->led1 <= readvalue) {
             instrumentData->led1 = readvalue;
@@ -159,11 +132,11 @@ void GPS(struct instrumentStructure *instrumentData) {
     instrumentData->gps_lng = random(-7200, -6900)*0.01;
     instrumentData->gps_day = random(1, 32);
     instrumentData->gps_month = random(1, 13);
-    instrumentData->gps_year = random(2022, 2025);
+    instrumentData->gps_year = random(2023, 2026);
     instrumentData->gps_hour = random(0, 24);
     instrumentData->gps_minute = random(0, 61);
     instrumentData->gps_second = random(0, 61);
-    instrumentData->gps_alt = random(4000, 6000)*0.1;
+    instrumentData->gps_alt = random(0, 550000)*0.01;
 }
 
 void BMP(struct instrumentStructure *instrumentData) {
@@ -174,12 +147,12 @@ void BMP(struct instrumentStructure *instrumentData) {
     wait = random(0,300);
     delay(wait);
 
-    instrumentData->bmp_temp = random(0, 30);
+    instrumentData->bmp_temp = random(0, 3000)*0.01;
     wait = random(0,300);
     delay(wait);
 
-    instrumentData->bmp_pres = random(8, 12);
-    instrumentData->bmp_alt = random(400, 600);
+    instrumentData->bmp_pres = random(40000, 101300)*0.01;
+    instrumentData->bmp_alt = random(0, 550000)*0.01;
 }
 
 String data2csv(struct instrumentStructure *instrumentData) {
@@ -225,7 +198,5 @@ String data2csv(struct instrumentStructure *instrumentData) {
                                                                                    temp_str,
                                                                                    pres_str,
                                                                                    bmp_alt_str);
-    Serial.print(F("All data: "));
-    Serial.println(data_CSV);
     return data_CSV;
 }

@@ -31,7 +31,7 @@
     #define trackerTrigger A2
 #endif
 #define CS_ADC 4         // ADC chip select.
-#define CS_SD 8          //SD chip select. Matches hardware SPI bus implementation on 328P.
+#define CS_SD 10         //SD chip select. Matches hardware SPI bus implementation on 328P.
 
 SFE_BMP180 pressure;     // BMP180 object
 TinyGPSPlus gps;         // GPS object.
@@ -62,6 +62,7 @@ void setup() {
     struct instrumentStructure instrumentData;
     pinMode(trackerTrigger, INPUT); //stop trigger from Tracker Unit init
     pinMode(CS_ADC, OUTPUT); // pinMode!!!
+    digitalWrite(CS_ADC, HIGH); //turn off ADC
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
     Serial.print(F("Initiating software serial..."));
