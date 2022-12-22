@@ -10,15 +10,12 @@ DS3231 Clock;
 String ISO;
 int Second, Minute, Hour, WeekDay, Date, Month, Year; // clock set parameters
 
-
-
 void setup() {
-    Serial.begin(9600); // the serial monitor needs to be set at 19200 baud in order to work properly, dont ask why
+    Serial.begin(115200); // the serial monitor needs to be set at 19200 baud in order to work properly, dont ask why
     Serial.println(F("Welcome to the rtc_set Program"));
     
     Serial.println(F("Insert the date in ISO 8601 format YYYYMMDDTHHMMSS:")); // the time can be interpreted in 24h format and also the "T" is just a string to separate date from time
     Wire.begin(); // important to initialize the I2C interface
-    
 }
 
 void loop() {
