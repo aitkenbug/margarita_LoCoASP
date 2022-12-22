@@ -65,7 +65,7 @@ void setup() {
     digitalWrite(CS_ADC, HIGH); //turn off ADC
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
-    Serial.print(F("Initiating software serial..."));
+    Serial.print(F("\nInitiating software serial..."));
     ss.begin(GPSBaud);
     Serial.print(F(" Done.\nInitiating the BMP180..."));
     pressure.begin();
@@ -92,13 +92,16 @@ void setup() {
     SPI.begin();
     Serial.print(F("Initiating the uSD card..."));
     SD.begin(CS_SD); //SD init
-    Serial.println(F("           Done."));
+    Serial.println(F("    Done."));
     delay(100);
 
     Serial.print(F("Measuring with the BMP180..."));
     BMP(&instrumentData); //BMP180 data
     Serial.println(F("  Done."));
     delay(100);
+
+    Serial.println(F("Attempting to save the following data:"));
+    Serial.println(data2csv(&instrumentData));
 
     //---DATA STORAGE---
     File dataFile = SD.open("Data.txt", FILE_WRITE);
@@ -113,7 +116,7 @@ void setup() {
     }
     delay(100);
 
-    Serial.println(F("\nCurrently saved data:\n"));
+    Serial.println(F("\nCurrently saved data:"));
     dataFile = SD.open("Data.txt");
     if (dataFile) {
         while (dataFile.available()) {
@@ -254,7 +257,5 @@ String data2csv(struct instrumentStructure *instrumentData) {
                                                                                    temp_str,
                                                                                    pres_str,
                                                                                    bmp_alt_str);
-    Serial.print(F("All data: "));
-    Serial.println(data_CSV);
     return data_CSV;
 }
