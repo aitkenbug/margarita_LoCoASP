@@ -103,6 +103,7 @@ void setup() {
     //---DATA STORAGE---
     File dataFile = SD.open("Data.txt", FILE_WRITE);
     if (dataFile) { //check availability
+        dataFile.seek(EOF);
         dataFile.println(data2csv(&instrumentData));
         dataFile.close();
         Serial.println(F("Data saved successfully."));
