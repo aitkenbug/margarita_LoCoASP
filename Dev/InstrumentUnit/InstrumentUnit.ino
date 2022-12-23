@@ -89,19 +89,16 @@ void setup() {
     Serial.println(F("     Done."));
     delay(100);
 
-    SPI.begin();
-    Serial.print(F("Initiating the uSD card..."));
-    SD.begin(CS_SD); //SD init
-    Serial.println(F("    Done."));
-    delay(100);
-
     Serial.print(F("Measuring with the BMP180..."));
     BMP(&instrumentData); //BMP180 data
     Serial.println(F("  Done."));
     delay(100);
 
-    Serial.println(F("Attempting to save the following data:"));
-    Serial.println(data2csv(&instrumentData));
+    SPI.begin();
+    Serial.print(F("Initiating the uSD card..."));
+    SD.begin(CS_SD); //SD init
+    Serial.println(F("    Done."));
+    delay(100);
 
     //---DATA STORAGE---
     File dataFile = SD.open("Data.txt", FILE_WRITE);
