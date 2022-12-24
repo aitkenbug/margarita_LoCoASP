@@ -30,7 +30,7 @@
     SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS ss(rx,tx)
 #else
     #define trackerTrigger A2
-    SoftwareSerial ss(3, 3); // Conexion serial para conectarse al GPS ss(rx,tx)
+    SoftwareSerial ss(8, 9); // Conexion serial para conectarse al GPS ss(rx,tx)
 #endif
 #define CS_ADC 4         // ADC chip select.
 #define CS_SD 8          //SD chip select. Matches hardware SPI bus implementation on 328P.
