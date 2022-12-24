@@ -24,7 +24,8 @@
     SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS ss(rx,tx)
 #else
     #define trackerTrigger A2
-    SoftwareSerial ss(3, 3); // Conexion serial para conectarse al GPS ss(rx,tx)
+    SoftwareSerial ss(8, 9); // Conexion serial para conectarse al GPS ss(rx,tx)
+#endif
 
 TinyGPSPlus gps; // GPS object.
 
@@ -51,8 +52,9 @@ struct instrumentStructure {
 void setup() {
     delay(1500);
     Serial.begin(115200);
+    struct instrumentStructure instrumentData;
     Serial.println(F("Initializing the GPS module..."));
-    ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
+    ss.begin(GPSBaud);//,SWSERIAL_8N1,12,13,false,256);
     Serial.println(F("Done.\nTesting the code..."));
     for (int i=0; i < 10; i++) {
         GPS_sw_test(&instrumentData);
@@ -62,6 +64,7 @@ void setup() {
 }
 
 void loop() {
+    struct instrumentStructure instrumentData;
     GPS(&instrumentData);
     Serial.println(data2csv(&instrumentData));
     delay(500);
@@ -81,7 +84,7 @@ void GPS_sw_test(struct instrumentStructure *instrumentData) {
 
 void GPS(struct instrumentStructure *instrumentData) {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
+    unsigned long timeout = millis() + 1000;
     while (millis() < timeout) {
         while (ss.available() > 0) {
             if (gps.encode(ss.read())) {
@@ -128,23 +131,25 @@ String data2csv(struct instrumentStructure *instrumentData) {
     else
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
-                                                                                   instrumentData->led2,
-                                                                                   instrumentData->led3,
-                                                                                   instrumentData->led4,
-                                                                                   lat_str,
-                                                                                   'S'-5*(instrumentData->gps_lat > 0),
-                                                                                   lng_str,
-                                                                                   'W'-18*(instrumentData->gps_lng > 0),
-                                                                                   instrumentData->gps_day,
-                                                                                   instrumentData->gps_month,
-                                                                                   instrumentData->gps_year,
-                                                                                   instrumentData->gps_hour,
-                                                                                   instrumentData->gps_minute,
-                                                                                   instrumentData->gps_second,
-                                                                                   gps_alt_str,
-                                                                                   temp_str,
-                                                                                   pres_str,
-                                                                                   bmp_alt_str);
+    sprintf(data_CSV,
+            "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+            instrumentData->led1,
+            instrumentData->led2,
+            instrumentData->led3,
+            instrumentData->led4,
+            lat_str,
+            'S'-5*(instrumentData->gps_lat > 0),
+            lng_str,
+            'W'-18*(instrumentData->gps_lng > 0),
+            instrumentData->gps_day,
+            instrumentData->gps_month,
+            instrumentData->gps_year,
+            instrumentData->gps_hour,
+            instrumentData->gps_minute,
+            instrumentData->gps_second,
+            gps_alt_str,
+            temp_str,
+            pres_str,
+            bmp_alt_str);
     return data_CSV;
 }
