@@ -27,15 +27,16 @@
 
 #ifdef ESP32
     #define trackerTrigger 21
+    SoftwareSerial ss(33, 32); // Serial connection for the GPS ss(rx,tx)
 #else
     #define trackerTrigger A2
+    SoftwareSerial ss(8, 9);   // Serial connection for the GPS ss(rx,tx)
 #endif
 #define CS_ADC 4         // ADC chip select.
 #define CS_SD 10         //SD chip select. Matches hardware SPI bus implementation on 328P.
 
 SFE_BMP180 pressure;     // BMP180 object
 TinyGPSPlus gps;         // GPS object.
-SoftwareSerial ss(3, 2); // Conexion serial para conectarse al GPS
 
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
@@ -66,7 +67,11 @@ void setup() {
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
     Serial.print(F("\nInitiating software serial..."));
-    ss.begin(GPSBaud);
+    #ifdef ESP32
+        ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
+    #else
+        ss.begin(GPSBaud);
+    #endif
     Serial.print(F(" Done.\nInitiating the BMP180..."));
     pressure.begin();
     Serial.println(F("      Done."));
