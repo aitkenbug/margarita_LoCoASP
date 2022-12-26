@@ -70,10 +70,6 @@ void track_the_sun(float azimuth, float elevation) {
     int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
     int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
     int hor = 0, ver = 0, hor0 = 0, ver0 = 0;
-
-    Serial.println(F("Attaching servos"));
-    az_servo.attach(9);
-    el_servo.attach(10);
   
     if ((azimuth >= 0) && (azimuth <= 90)) {
         correctaz = int(90 - azimuth);
@@ -91,7 +87,6 @@ void track_the_sun(float azimuth, float elevation) {
 
     az_servo.writeMicroseconds(sec(int(correctaz)));
     el_servo.writeMicroseconds(sec(int(correctel)));
-    Serial.println(F("Rough position calculated"));
 }
 
 int sec(int in) {
