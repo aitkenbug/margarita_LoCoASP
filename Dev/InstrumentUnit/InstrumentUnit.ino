@@ -113,7 +113,7 @@ void measurement(struct instrumentStructure *instrumentData) {
 
     snprintf(filename, 20, "000/%d%d%d%d.csv",instrumentData->gps_year - 2000,
                                               instrumentData->gps_month,
-                                              instrumentData->gps_day,                                                                   
+                                              instrumentData->gps_day,
                                               instrumentData->gps_hour);
     Serial.println(filename);
 }
