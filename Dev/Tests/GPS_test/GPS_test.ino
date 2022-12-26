@@ -13,21 +13,21 @@
 // Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
 // ------------------------------------------------------------------------------------------------------------------
 // INSTRUMENT.INO > Photometer Instrument Unit
-// Firmware for Instrument Unit - Arduino Uno
+// Firmware for Instrument Unit - Arduino Uno/ESP32
 
 //---LIBRARIES---
-#include <TinyGPS++.h> // GPS Library, to be replaced by raw NMEA commands.
-#include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
+#include <TinyGPS++.h>         // GPS Library, to be replaced by raw NMEA commands.
+#include <SoftwareSerial.h>    // Serial port for non-UART pins, used in NMEA-GPS.
 
 #ifdef ESP32
     #define trackerTrigger 21
-    SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS ss(rx,tx)
+    SoftwareSerial ss(33, 32); // Serial connection for the GPS ss(rx,tx)
 #else
     #define trackerTrigger A2
-    SoftwareSerial ss(8, 9); // Conexion serial para conectarse al GPS ss(rx,tx)
+    SoftwareSerial ss(8, 9);   // Serial connection for the GPS ss(rx,tx)
 #endif
 
-TinyGPSPlus gps; // GPS object.
+TinyGPSPlus gps;               // GPS object.
 
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
@@ -54,7 +54,11 @@ void setup() {
     Serial.begin(115200);
     struct instrumentStructure instrumentData;
     Serial.println(F("Initializing the GPS module..."));
-    ss.begin(GPSBaud);//,SWSERIAL_8N1,12,13,false,256);
+    #ifdef ESP32
+        ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
+    #else
+        ss.begin(GPSBaud);
+    #endif
     Serial.println(F("Done.\nTesting the code..."));
     for (int i=0; i < 10; i++) {
         GPS_sw_test(&instrumentData);
