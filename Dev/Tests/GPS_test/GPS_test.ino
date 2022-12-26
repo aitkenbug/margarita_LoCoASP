@@ -136,7 +136,7 @@ String data2csv(struct instrumentStructure *instrumentData) {
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
     sprintf(data_CSV,
-            "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+            "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
             instrumentData->led1,
             instrumentData->led2,
             instrumentData->led3,
