@@ -38,6 +38,7 @@
 SFE_BMP180 pressure;     // BMP180 object
 TinyGPSPlus gps;         // GPS object.
 
+char filename[20];
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
     int led1 = 0;
@@ -65,7 +66,11 @@ void setup() {
     //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
     Serial.print(F("Initiating software serial..."));
-    ss.begin(GPSBaud);
+    #ifdef ESP32
+        ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
+    #else
+        ss.begin(GPSBaud);
+    #endif 
     Serial.print(F(" Done.\nInitiating the BMP180..."));
     pressure.begin();
     Serial.println(F("      Done."));
@@ -73,24 +78,40 @@ void setup() {
 
 void loop() {
     //---MEASURING STARTS HERE---
-    struct instrumentStructure instrumentData;
-    SPI.begin();
-    data(&instrumentData); //ADC data
-    SPI.end();
-    delay(100);
-
-    GPS(&instrumentData); //GPS data
-    delay(100);
-
-    BMP(&instrumentData); //BMP180 data
-    delay(100);
-    data2csv(&instrumentData);
-
-    Serial.println(data2csv(&instrumentData));
-    delay(1500);
+    struct instrumentStructure instrumentData[3];
+    measurement(&instrumentData[0]);
+    data2csv(&instrumentData[0]);
+    measurement(&instrumentData[1]);
+    data2csv(&instrumentData[1]);
+    measurement(&instrumentData[2]);
+    data2csv(&instrumentData[2]);
+    delay(1000);
 }
 
 //---DATA ACQUISITION FUNCTIONS---
+
+void measurement(struct instrumentStructure *instrumentData) {
+    SPI.begin();
+    Serial.print(F("Measuring sensors..."));
+    data(instrumentData); //ADC data
+    Serial.println(F("          Done."));
+    SPI.end();
+
+    Serial.print(F("Reading the GPS module..."));
+    GPS(instrumentData); //GPS data
+    Serial.println(F("     Done."));
+
+    Serial.print(F("Measuring with the BMP180..."));
+    BMP(instrumentData); //BMP180 data
+    Serial.println(F("  Done."));
+    delay(100);
+
+    snprintf(filename, 20, "000/%d%d%d%d.csv",instrumentData->gps_year - 2000,
+                                              instrumentData->gps_month,
+                                              instrumentData->gps_day,                                                                   
+                                              instrumentData->gps_hour);
+    Serial.println(filename);
+}
 
 void data(struct instrumentStructure *instrumentData) {
     //Sensor data processing and collation.
@@ -171,23 +192,26 @@ String data2csv(struct instrumentStructure *instrumentData) {
     else
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
-                                                                                   instrumentData->led2,
-                                                                                   instrumentData->led3,
-                                                                                   instrumentData->led4,
-                                                                                   lat_str,
-                                                                                   'S'-5*(instrumentData->gps_lat > 0),
-                                                                                   lng_str,
-                                                                                   'W'-18*(instrumentData->gps_lng > 0),
-                                                                                   instrumentData->gps_day,
-                                                                                   instrumentData->gps_month,
-                                                                                   instrumentData->gps_year,
-                                                                                   instrumentData->gps_hour,
-                                                                                   instrumentData->gps_minute,
-                                                                                   instrumentData->gps_second,
-                                                                                   gps_alt_str,
-                                                                                   temp_str,
-                                                                                   pres_str,
-                                                                                   bmp_alt_str);
+    sprintf(data_CSV,
+            "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+            instrumentData->led1,
+            instrumentData->led2,
+            instrumentData->led3,
+            instrumentData->led4,
+            lat_str,
+            'S'-5*(instrumentData->gps_lat > 0),
+            lng_str,
+            'W'-18*(instrumentData->gps_lng > 0),
+            instrumentData->gps_day,
+            instrumentData->gps_month,
+            instrumentData->gps_year,
+            instrumentData->gps_hour,
+            instrumentData->gps_minute,
+            instrumentData->gps_second,
+            gps_alt_str,
+            temp_str,
+            pres_str,
+            bmp_alt_str);
+    Serial.println(data_CSV);
     return data_CSV;
 }
