@@ -259,6 +259,7 @@ void track_the_sun(float azimuth, float elevation) {
 //********************************************************************************************************************************************
     // Iniciamos las conexiones de energia a los motores, arduino uno y shield M2M
     /*
+    pinMode(2, OUTPUT); //Pin de conexion con arduino uno
     pinMode(4, OUTPUT);
     pinMode(5, OUTPUT);
     pinMode(6, OUTPUT);
@@ -266,10 +267,8 @@ void track_the_sun(float azimuth, float elevation) {
     pinMode(8, OUTPUT);
     pinMode(13, OUTPUT);
     */
-    DDRD |= B11110000; // Sets Ports 4, 5, 6 and 7 as OUTPUT.
+    DDRD |= B11110100; // Sets Ports 2, 4, 5, 6 and 7 as OUTPUT.
     DDRB |= B00100001; // Sets Ports 8 and 13 as OUTPUT.
-    //Pin de conexion con arduino uno
-    pinMode(2, OUTPUT);
 
     Serial.println(elevation);
 
