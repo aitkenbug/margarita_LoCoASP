@@ -255,7 +255,7 @@ void data2csv(struct instrumentStructure *instrumentData) {
     delay(100);
 
     //---DATA STORAGE---
-    File dataFile = SD.open((String) filename, FILE_WRITE);
+    File dataFile = SD.open(filename, FILE_WRITE);
     if (dataFile) { //check availability
         dataFile.seek(EOF);
         dataFile.println(data_CSV);
