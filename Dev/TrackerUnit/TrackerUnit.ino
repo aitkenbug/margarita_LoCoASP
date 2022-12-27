@@ -21,8 +21,8 @@
 #include <Wire.h> // Libreria control I2C
 
 //Declaracion Servos
-Servo myservo1;
-Servo myservo2; 
+Servo az_servo;
+Servo el_servo; 
 
 //Declaracion Reloj
 DS3231 Clock;
@@ -57,8 +57,8 @@ void setup() {
     Serial.begin(115200);
 
     //Serial.println(F("Attaching servos"));
-    //myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
-    //myservo2.attach(10);
+    //az_servo.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    //el_servo.attach(10);
 
     /* Now it is time to enable an interrupt. In the function call
        attachInterrupt(A, B, C)
@@ -225,8 +225,8 @@ void track_the_sun(float azimuth, float elevation) {
     int hor = 0, ver = 0, hor0 = 0, ver0 = 0;
 
     Serial.println(F("Attaching servos"));
-    myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
-    myservo2.attach(10);
+    az_servo.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    el_servo.attach(10);
   
     if ((azimuth >= 0) && (azimuth <= 90)) {
         correctaz = int(90 - azimuth);
@@ -242,8 +242,8 @@ void track_the_sun(float azimuth, float elevation) {
         correctel = elevation;
     }
 
-    myservo1.writeMicroseconds(sec(int(correctaz)));
-    myservo2.writeMicroseconds(sec(int(correctel)));
+    az_servo.writeMicroseconds(sec(int(correctaz)));
+    el_servo.writeMicroseconds(sec(int(correctel)));
     Serial.println(F("Rough position calculated"));
     delay(3000);
 
@@ -385,18 +385,18 @@ void track_the_sun(float azimuth, float elevation) {
             }
             //Ejecutamos el seguimiento
             //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
-            myservo2.writeMicroseconds(sec(ver0));
-            myservo1.writeMicroseconds(sec(hor0));
+            el_servo.writeMicroseconds(sec(ver0));
+            az_servo.writeMicroseconds(sec(hor0));
             delay(20);
             // waits for the servo to get there
         }
         // Ramp-down
-        myservo1.writeMicroseconds(sec(00));
-        myservo2.write(180);
+        az_servo.writeMicroseconds(sec(00));
+        el_servo.write(180);
         delay(5000);
 
-        myservo1.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
-        myservo2.detach();
+        az_servo.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
+        el_servo.detach();
         // Apagamos la energia de los motores
         digitalWrite(4, LOW);
         //informamos al arduino UNO que termina la medición
