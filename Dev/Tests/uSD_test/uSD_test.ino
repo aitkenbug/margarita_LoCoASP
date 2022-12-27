@@ -84,11 +84,11 @@ void measurement(struct instrumentStructure *instrumentData) {
     BMP(instrumentData); //BMP180 data
     Serial.println(F("  Done."));
     delay(100);
-
-    snprintf(filename, 20, "000/%d%d%d%d.csv",instrumentData->gps_year - 2000,
-                                              instrumentData->gps_month,
-                                              instrumentData->gps_day,                                                                   
-                                              instrumentData->gps_hour);
+    int data_year = instrumentData->gps_year - 2000*(instrumentData->gps_year > 0);
+    snprintf(filename, 20, "000/%d%d%d%d.csv", data_year,
+                                               instrumentData->gps_month,
+                                               instrumentData->gps_day,                                                                   
+                                               instrumentData->gps_hour);
     Serial.println(filename);
 }
 
