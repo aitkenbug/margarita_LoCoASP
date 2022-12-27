@@ -60,12 +60,12 @@ struct instrumentStructure {
 };
 
 void setup() {
-    delay(1000);
     struct instrumentStructure instrumentData[3];
     pinMode(trackerTrigger, INPUT); //stop trigger from Tracker Unit init
     pinMode(CS_ADC, OUTPUT); // pinMode!!!
     digitalWrite(CS_ADC, HIGH); //turn off ADC
     Serial.begin(115200);
+    delay(1000);
     Serial.print(F("\nInitiating software serial..."));
     #ifdef ESP32
         ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
@@ -150,7 +150,7 @@ void data(struct instrumentStructure *instrumentData) {
 
 void GPS(struct instrumentStructure *instrumentData) {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
+    unsigned long timeout = millis() + 20000; //El tiempo de inicio para marcar
     while (millis() < timeout) {
         while (ss.available() > 0) {
             if (gps.encode(ss.read())) {
@@ -255,6 +255,7 @@ void data2csv(struct instrumentStructure *instrumentData) {
     delay(100);
 
     //---DATA STORAGE---
+    PORTD |= B00010000; // Turn off ADC
     File dataFile = SD.open(filename, FILE_WRITE);
     if (dataFile) { //check availability
         dataFile.seek(EOF);
