@@ -13,7 +13,7 @@
 // Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
 // ------------------------------------------------------------------------------------------------------------------
 // INSTRUMENT.INO > Photometer Instrument Unit
-// Firmware for Instrument Unit - Arduino Uno
+// Firmware for Instrument Unit - Arduino Uno/ESP32
 
 
 //---LIBRARIES---
@@ -25,12 +25,6 @@
     #define trackerTrigger A2
 #endif
 #define CS_ADC 4 // ADC chip select.
-
-#define SELPIN 4 //Pin de activación del ADC
-#define DATAOUT 11 // MOSI
-#define DATAIN 12 // MISO
-#define SPICLOCK 13 // CLK
-#define CTRL_Z 26 // termino
 
 struct instrumentStructure {
     int led1 = 0;
@@ -60,13 +54,13 @@ void setup() {
     SPI.begin();
     Serial.println(F("Reading individual channels..."));
     Serial.print(F("ADC CH1: "));
-    Serial.print(read_ADC(1));
+    Serial.print(read_ADC(0));
     Serial.print(F("  CH2: "));
-    Serial.print(read_ADC(2));
+    Serial.print(read_ADC(1));
     Serial.print(F("  CH3: "));
-    Serial.print(read_ADC(3));
+    Serial.print(read_ADC(2));
     Serial.print(F("  CH4: "));
-    Serial.println(read_ADC(4));
+    Serial.println(read_ADC(3));
     Serial.println(F("Done."));
     Serial.println(F("Starting full test..."));
 }
@@ -74,7 +68,7 @@ void setup() {
 void loop() {
     struct instrumentStructure instrumentData;
     data(&instrumentData);
-    Serial.println(data2csv(&instrumentData));
+    data2csv(&instrumentData);
     delay(500);
 }
 
@@ -82,24 +76,25 @@ void data(struct instrumentStructure *instrumentData) {
     //Sensor data processing and collation.
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
-    while (digitalRead(trackerTrigger)) {
+    unsigned long timeout = millis() + 30000;
+    while (digitalRead(trackerTrigger) && millis() < timeout) {
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
-        readvalue = read_ADC(1);
+        readvalue = read_ADC(0);
         if (instrumentData->led1 <= readvalue) {
             instrumentData->led1 = readvalue;
         }
 
-        readvalue = read_ADC(2);
+        readvalue = read_ADC(1);
         if (instrumentData->led2 <= readvalue) {
             instrumentData->led2 = readvalue;
         }
 
-        readvalue = read_ADC(3);
+        readvalue = read_ADC(2);
         if (instrumentData->led3 <= readvalue) {
             instrumentData->led3 = readvalue;
         }
 
-        readvalue = read_ADC(4);
+        readvalue = read_ADC(3);
         if (instrumentData->led4 <= readvalue) {
             instrumentData->led4 = readvalue;
         }
@@ -109,19 +104,19 @@ void data(struct instrumentStructure *instrumentData) {
 
 int read_ADC(int channel) {
     //ADC SPI interface
-    const int byte8 =0x06; //setup byte
+    const int byte8 = 0x06; //setup byte
     int adcValue = 0;
-    int byte16 = (channel - 1) << 14; //bitshifted channel for second block.
-
-    digitalWrite(CS_ADC, LOW); //select MCP3204
+    int byte16 = channel << 14; //bitshifted channel for second block.
+    //digitalWrite(CS_ADC, LOW); //select MCP3204
+    PORTD &= B11101111;
     SPI.transfer(byte8);
     adcValue = SPI.transfer16(byte16) & 0x0FFF; //ADC sample bitmasking.
-    digitalWrite(CS_ADC, HIGH); //turn off device
-
+    //digitalWrite(CS_ADC, HIGH); //turn off device
+    PORTD |= B00010000;
     return adcValue;
 }
 
-String data2csv(struct instrumentStructure *instrumentData) {
+void data2csv(struct instrumentStructure *instrumentData) {
     char data_CSV[110] = {0};
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
@@ -146,23 +141,25 @@ String data2csv(struct instrumentStructure *instrumentData) {
     else
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
-                                                                                   instrumentData->led2,
-                                                                                   instrumentData->led3,
-                                                                                   instrumentData->led4,
-                                                                                   lat_str,
-                                                                                   'S'-5*(instrumentData->gps_lat > 0),
-                                                                                   lng_str,
-                                                                                   'W'-18*(instrumentData->gps_lng > 0),
-                                                                                   instrumentData->gps_day,
-                                                                                   instrumentData->gps_month,
-                                                                                   instrumentData->gps_year,
-                                                                                   instrumentData->gps_hour,
-                                                                                   instrumentData->gps_minute,
-                                                                                   instrumentData->gps_second,
-                                                                                   gps_alt_str,
-                                                                                   temp_str,
-                                                                                   pres_str,
-                                                                                   bmp_alt_str);
-    return data_CSV;
+    sprintf(data_CSV,
+            "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+            instrumentData->led1,
+            instrumentData->led2,
+            instrumentData->led3,
+            instrumentData->led4,
+            lat_str,
+            'S'-5*(instrumentData->gps_lat > 0),
+            lng_str,
+            'W'-18*(instrumentData->gps_lng > 0),
+            instrumentData->gps_day,
+            instrumentData->gps_month,
+            instrumentData->gps_year,
+            instrumentData->gps_hour,
+            instrumentData->gps_minute,
+            instrumentData->gps_second,
+            gps_alt_str,
+            temp_str,
+            pres_str,
+            bmp_alt_str);
+    Serial.println(data_CSV);
 }
