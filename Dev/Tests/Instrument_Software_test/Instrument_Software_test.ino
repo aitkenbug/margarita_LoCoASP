@@ -15,21 +15,11 @@
 // INSTRUMENT.INO > Photometer Instrument Unit
 // Firmware for Instrument Unit - Arduino Uno/ESP32
 
+
 //---LIBRARIES---
-#include <TinyGPS++.h>         // GPS Library, to be replaced by raw NMEA commands.
-#include <SoftwareSerial.h>    // Serial port for non-UART pins, used in NMEA-GPS.
+#include <Arduino.h> // For using the ESP32 with the Arduino IDE.
 
-#ifdef ESP32
-    #define trackerTrigger 21
-    SoftwareSerial ss(33, 32); // Serial connection for the GPS ss(rx,tx)
-#else
-    #define trackerTrigger A2
-    SoftwareSerial ss(8, 9);   // Serial connection for the GPS ss(rx,tx)
-#endif
-
-TinyGPSPlus gps;               // GPS object.
-
-static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
+char filename[20];
 struct instrumentStructure {
     int led1 = 0;
     int led2 = 0;
@@ -50,31 +40,74 @@ struct instrumentStructure {
 };
 
 void setup() {
-    delay(1500);
+    delay(1000);
     Serial.begin(115200);
-    struct instrumentStructure instrumentData;
-    Serial.println(F("Initializing the GPS module..."));
-    #ifdef ESP32
-        ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
-    #else
-        ss.begin(GPSBaud);
-    #endif
-    Serial.println(F("Done.\nTesting the code..."));
-    for (int i=0; i < 10; i++) {
-        GPS_sw_test(&instrumentData);
-        Serial.println(data2csv(&instrumentData));
-    }
-    Serial.println(F("Done.\nTesting the GPS module..."));
 }
 
 void loop() {
-    struct instrumentStructure instrumentData;
-    GPS(&instrumentData);
-    Serial.println(data2csv(&instrumentData));
-    delay(500);
+    //---MEASURING STARTS HERE---
+    struct instrumentStructure instrumentData[3];
+    measurement(&instrumentData[0]);
+    data2csv(&instrumentData[0]);
+    measurement(&instrumentData[1]);
+    data2csv(&instrumentData[1]);
+    measurement(&instrumentData[2]);
+    data2csv(&instrumentData[2]);
+    delay(1000);
 }
 
-void GPS_sw_test(struct instrumentStructure *instrumentData) {
+//---DATA ACQUISITION FUNCTIONS---
+
+void measurement(struct instrumentStructure *instrumentData) {
+    Serial.print(F("Measuring sensors..."));
+    data(instrumentData); //ADC data
+    Serial.println(F("          Done."));
+
+    Serial.print(F("Reading the GPS module..."));
+    GPS(instrumentData); //GPS data
+    Serial.println(F("     Done."));
+
+    Serial.print(F("Measuring with the BMP180..."));
+    BMP(instrumentData); //BMP180 data
+    Serial.println(F("  Done."));
+    delay(100);
+    int data_year = instrumentData->gps_year - 2000*(instrumentData->gps_year > 0);
+    snprintf(filename, 20, "000/%d%d%d%d.csv", data_year,
+                                               instrumentData->gps_month,
+                                               instrumentData->gps_day,                                                                   
+                                               instrumentData->gps_hour);
+    Serial.println(filename);
+}
+
+void data(struct instrumentStructure *instrumentData) {
+    //Sensor data processing and collation.
+    int readvalue = 0;
+    //Sensor readout, keep highest value of each sensor.
+    unsigned long timeout = millis() + 1;
+    while (millis() < timeout) {//Second check of trackerTrigger (?)
+        readvalue = random(0, 4096);
+        if (instrumentData->led1 <= readvalue) {
+            instrumentData->led1 = readvalue;
+        }
+
+        readvalue = random(0, 4096);
+        if (instrumentData->led2 <= readvalue) {
+            instrumentData->led2 = readvalue;
+        }
+
+        readvalue = random(0, 4096);
+        if (instrumentData->led3 <= readvalue) {
+            instrumentData->led3 = readvalue;
+        }
+
+        readvalue = random(0, 4096);
+        if (instrumentData->led4 <= readvalue) {
+            instrumentData->led4 = readvalue;
+        }
+    }
+}
+
+void GPS(struct instrumentStructure *instrumentData) {
     instrumentData->gps_lat = random(-340000, -320000)*0.0001;
     instrumentData->gps_lng = random(-720000, -690000)*0.0001;
     instrumentData->gps_day = random(1, 32);
@@ -86,31 +119,21 @@ void GPS_sw_test(struct instrumentStructure *instrumentData) {
     instrumentData->gps_alt = random(0, 550000)*0.01;
 }
 
-void GPS(struct instrumentStructure *instrumentData) {
-    //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    unsigned long timeout = millis() + 1000;
-    while (millis() < timeout) {
-        while (ss.available() > 0) {
-            if (gps.encode(ss.read())) {
-                if (gps.location.isValid()) {
-                    // isValid checks for the complete GPRMC frame.
-                    instrumentData->gps_lat = gps.location.lat();
-                    instrumentData->gps_lng = gps.location.lng();
-                    instrumentData->gps_day = gps.date.day();
-                    instrumentData->gps_month = gps.date.month();
-                    instrumentData->gps_year = gps.date.year();
-                    instrumentData->gps_hour = gps.time.hour();
-                    instrumentData->gps_minute = gps.time.minute();
-                    instrumentData->gps_second = gps.time.second();
-                    instrumentData->gps_alt = (float)gps.altitude.meters();
-                    break;
-                }
-            }
-        }
-    }
+void BMP(struct instrumentStructure *instrumentData) {
+    //BMP180 data gathering. IC out of production, would be wise to replace.
+    uint8_t wait = 0;
+    wait = random(0,300);
+    delay(wait);
+
+    instrumentData->bmp_temp = random(0, 3000)*0.01;
+    wait = random(0,300);
+    delay(wait);
+
+    instrumentData->bmp_pres = random(40000, 101300)*0.01;
+    instrumentData->bmp_alt = random(0, 550000)*0.01;
 }
 
-String data2csv(struct instrumentStructure *instrumentData) {
+void data2csv(struct instrumentStructure *instrumentData) {
     char data_CSV[110] = {0};
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
@@ -155,5 +178,5 @@ String data2csv(struct instrumentStructure *instrumentData) {
             temp_str,
             pres_str,
             bmp_alt_str);
-    return data_CSV;
+    Serial.println(data_CSV);
 }

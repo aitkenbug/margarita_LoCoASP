@@ -1,11 +1,28 @@
+// ------------------------------------------------------------------------------------------------------------------
+//      __  ___                            _ __              __          ______      ___   _____ ____
+//     /  |/  /___ __________ _____ ______(_) /_____ _      / /   ____  / ____/___  /   | / ___// __ \
+//    / /|_/ / __ `/ ___/ __ `/ __ `/ ___/ / __/ __ `/_____/ /   / __ \/ /   / __ \/ /| | \__ \/ /_/ /
+//   / /  / / /_/ / /  / /_/ / /_/ / /  / / /_/ /_/ /_____/ /___/ /_/ / /___/ /_/ / ___ |___/ / _, _/
+//  /_/  /_/\__,_/_/   \__, /\__,_/_/  /_/\__/\__,_/     /_____/\____/\____/\____/_/  |_/____/_/ |_|
+//                    /____/
+// ------------------------------------------------------------------------------------------------------------------
+// Second Generation Low-Cost Automatic Sun Photometer for scale-oriented measurements of Aerosol Optical Depth (AOD)
+// Space and Planetary Exploration Laboratory, Faculty of Physical and Matemathical Sciences, University of Chile
+// ------------------------------------------------------------------------------------------------------------------
+// First generation developement by Cristobal Garrido and MCI Electronics
+// Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
+// ------------------------------------------------------------------------------------------------------------------
+// INSTRUMENT.INO > Photometer Instrument Unit
+// Firmware for Instrument Unit - Arduino Uno / ESP32
+
 #include <avr/sleep.h> // Libreria para Sleep
 #include <Servo.h> // Libreria Servo
 #include <DS3231.h> // Libreria reloj con alarma
 #include <Wire.h> // Libreria control I2C
 
 //Declaracion Servos
-Servo myservo1;
-Servo myservo2; 
+Servo az_servo;
+Servo el_servo; 
 
 //Declaracion Reloj
 DS3231 Clock;
@@ -22,8 +39,8 @@ unsigned long tiempo = 0;
 bool convergencia = true;
 float tupper_lat = -33.458017, tupper_lng = -70.661989;
 struct coordinates {
-       float azimuth;
-       float elevation;
+   float azimuth;
+   float elevation;
 };
 
 void wakeUpNow() {       // here the interrupt is handled after wakeup
@@ -38,10 +55,11 @@ void setup() {
     pinMode(wakePin, INPUT);
     Wire.begin();
     Serial.begin(115200);
+    delay(1000);
 
     //Serial.println(F("Attaching servos"));
-    //myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
-    //myservo2.attach(10);
+    //az_servo.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    //el_servo.attach(10);
 
     /* Now it is time to enable an interrupt. In the function call
        attachInterrupt(A, B, C)
@@ -143,17 +161,17 @@ void update_date_and_time() {
     //////////////////////////////////////////////////  
     //codigo mágico que pone en high la alarma
     //Revision precencia de alarma
-    Serial.println("Loop Start");
-    Serial.println("Alarm Check");
-    delay(1000);
-
+    Serial.println(F("Alarm Check"));
+    char datetime[24];
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
     second = (uint8_t)Clock.getSecond(); // Is it used?
     minute = (uint8_t)Clock.getMinute();
     hour = (uint8_t)Clock.getHour(fse, fse);
     day = (uint8_t)Clock.getDate();
     month = (uint8_t)Clock.getMonth(fse);
-    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used? 
+    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used?
+    snprintf(datetime, 24, "%u/%u/%u %u:%u:%u", year, month, day, hour, minute, second);
+    Serial.println(datetime);
 }
 
 void set_next_alarm(uint8_t minute) {
@@ -165,7 +183,7 @@ void set_next_alarm(uint8_t minute) {
 
     Serial.print(F("Next alarm set: "));
     Serial.print((minute + 5) % 60);
-    Serial.print("/");
+    Serial.print(F("/"));
     Serial.println(Clock.checkAlarmEnabled(1));
 
     delay(100);
@@ -194,22 +212,8 @@ struct coordinates get_sun_position(float latitude, float longitude, uint8_t mon
     h = FindH(day,month) + longitude + (timezone * -15);//FINDS THE NOON HOUR ANGLE ON THE TABLE AND MODIFIES IT FOR THE USER'S OWN LOCATION AND TIME ZONE.
     h = ((((hour + minute/60) - 12) * 15) + h)*deg2rad;//FURTHER MODIFIES THE NOON HOUR ANGLE OF THE CURRENT DAY AND TURNS IT INTO THE HOUR ANGLE FOR THE CURRENT HOUR AND MINUTE.
     float cos_h = cos(h);
-    angles.elevation = (asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h))*rad2deg;//FINDS THE SUN'S ALTITUDE.
-    angles.azimuth = (atan2((sin(h)),((cos_h * sin_lat) - sin_delta/cos_delta * cos_lat)))*rad2deg + northOrSouth;//FINDS THE SUN'S AZIMUTH.
-    Serial.print(F(" Azimuth: "));
-    Serial.print(angles.azimuth);
-    Serial.print(F(" Elevation: "));
-    Serial.print(angles.elevation);
-    Serial.print(F(" Delta: "));
-    Serial.print(delta);
-    Serial.print(F(" h: "));
-    Serial.print(h);
-    Serial.print(F(" n: "));
-    Serial.print(n);
-    Serial.print(F(" month: "));
-    Serial.print(month);
-    Serial.print(F(" daynum: "));
-    Serial.println(daynum[month-1]);
+    angles.elevation = asin(sin_lat * sin_delta + cos_lat * cos_delta * cos_h)*rad2deg;//FINDS THE SUN'S ALTITUDE.
+    angles.azimuth = atan2(sin(h), (cos_h * sin_lat) - sin_delta/cos_delta * cos_lat)*rad2deg + northOrSouth;//FINDS THE SUN'S AZIMUTH.
     return angles;
 }
 
@@ -223,8 +227,8 @@ void track_the_sun(float azimuth, float elevation) {
     int hor = 0, ver = 0, hor0 = 0, ver0 = 0;
 
     Serial.println(F("Attaching servos"));
-    myservo1.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
-    myservo2.attach(10);
+    az_servo.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
+    el_servo.attach(10);
   
     if ((azimuth >= 0) && (azimuth <= 90)) {
         correctaz = int(90 - azimuth);
@@ -240,8 +244,8 @@ void track_the_sun(float azimuth, float elevation) {
         correctel = elevation;
     }
 
-    myservo1.writeMicroseconds(sec(int(correctaz)));
-    myservo2.writeMicroseconds(sec(int(correctel)));
+    az_servo.writeMicroseconds(sec(int(correctaz)));
+    el_servo.writeMicroseconds(sec(int(correctel)));
     Serial.println(F("Rough position calculated"));
     delay(3000);
 
@@ -249,7 +253,6 @@ void track_the_sun(float azimuth, float elevation) {
     ver = int(correctel);
     hor0 = int(correctaz);
     ver0 = int(correctel);
-    delay(100);
     Serial.println(ver0);
 
     Serial.println(F("Starting Peripherals"));
@@ -258,6 +261,7 @@ void track_the_sun(float azimuth, float elevation) {
 //********************************************************************************************************************************************
     // Iniciamos las conexiones de energia a los motores, arduino uno y shield M2M
     /*
+    pinMode(2, OUTPUT); //Pin de conexion con arduino uno
     pinMode(4, OUTPUT);
     pinMode(5, OUTPUT);
     pinMode(6, OUTPUT);
@@ -265,10 +269,8 @@ void track_the_sun(float azimuth, float elevation) {
     pinMode(8, OUTPUT);
     pinMode(13, OUTPUT);
     */
-    DDRD |= B11110000; // Sets Ports 4, 5, 6 and 7 as OUTPUT.
+    DDRD |= B11110100; // Sets Ports 2, 4, 5, 6 and 7 as OUTPUT.
     DDRB |= B00100001; // Sets Ports 8 and 13 as OUTPUT.
-    //Pin de conexion con arduino uno
-    pinMode(2, OUTPUT);
 
     Serial.println(elevation);
 
@@ -309,6 +311,7 @@ void track_the_sun(float azimuth, float elevation) {
             comb32 = sensor3 + sensor2;
             comb03 = sensor0 + sensor3;
             comb12 = sensor1 + sensor2;
+            /*
             Serial.print(F("Sensor 0: "));
             Serial.print(sensor0);
             Serial.print(F("    Sensor 1: "));
@@ -317,6 +320,10 @@ void track_the_sun(float azimuth, float elevation) {
             Serial.print(sensor2);
             Serial.print(F("    Sensor 3: "));
             Serial.println(sensor3);
+            */
+            char buffer[100] = {0};
+            sprintf(buffer, "Sensor 0: %d    Sensor 1: %d    Sensor2: %d    Sensor 3: %d", sensor0, sensor1, sensor2, sensor3);
+            Serial.println(buffer);
 
             // Comparamos entradas opuesta y desacoplamos las respuestas
             if (sensor0 >= sensor2) {
@@ -380,23 +387,23 @@ void track_the_sun(float azimuth, float elevation) {
             }
             //Ejecutamos el seguimiento
             //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
-            myservo2.writeMicroseconds(sec(ver0));
-            myservo1.writeMicroseconds(sec(hor0));
+            el_servo.writeMicroseconds(sec(ver0));
+            az_servo.writeMicroseconds(sec(hor0));
             delay(20);
             // waits for the servo to get there
         }
         // Ramp-down
-        myservo1.writeMicroseconds(sec(00));
-        myservo2.write(180);
+        az_servo.writeMicroseconds(sec(00));
+        el_servo.write(180);
         delay(5000);
 
-        myservo1.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
-        myservo2.detach();
+        az_servo.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
+        el_servo.detach();
         // Apagamos la energia de los motores
         digitalWrite(4, LOW);
         //informamos al arduino UNO que termina la medición
         digitalWrite(2, LOW);
-        //delay(100);
+        delay(35000);
         //pinMode(2,INPUT);
         digitalWrite(7, LOW);
     }
