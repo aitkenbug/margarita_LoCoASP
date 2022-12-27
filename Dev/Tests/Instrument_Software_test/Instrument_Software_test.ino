@@ -13,33 +13,13 @@
 // Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
 // ------------------------------------------------------------------------------------------------------------------
 // INSTRUMENT.INO > Photometer Instrument Unit
-// Firmware for Instrument Unit - Arduino Uno / ESP32
+// Firmware for Instrument Unit - Arduino Uno/ESP32
 
 
 //---LIBRARIES---
-#include <Arduino.h>        // For using the ESP32 with the Arduino IDE.
-#include <TinyGPSPlus.h>    // GPS Library, to be replaced by raw NMEA commands.
-#include <SFE_BMP180.h>     // BMP180 for pressure, altitude, and temperature of turret assembly.
-#include <Wire.h>           // I2C bus for BMP180
-#include <SoftwareSerial.h> // Serial port for non-UART pins. For use in NMEA-GPS.
-#include <SD.h>             // SD Card Library
-#include <SPI.h>            // Hardware SPI library for MCP3204 ADC.
-
-#ifdef ESP32
-    #define trackerTrigger 21
-    SoftwareSerial ss(33, 32); // Conexion serial para conectarse al GPS ss(rx,tx)
-#else
-    #define trackerTrigger A2
-    SoftwareSerial ss(8, 9); // Conexion serial para conectarse al GPS ss(rx,tx)
-#endif
-#define CS_ADC 4         // ADC chip select.
-#define CS_SD 8          //SD chip select. Matches hardware SPI bus implementation on 328P.
-
-SFE_BMP180 pressure;     // BMP180 object
-TinyGPSPlus gps;         // GPS object.
+#include <Arduino.h> // For using the ESP32 with the Arduino IDE.
 
 char filename[20];
-static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
     int led1 = 0;
     int led2 = 0;
@@ -61,19 +41,7 @@ struct instrumentStructure {
 
 void setup() {
     delay(1000);
-    pinMode(trackerTrigger, INPUT); //stop trigger from Tracker Unit init
-    pinMode(CS_ADC, OUTPUT); // pinMode!!!
-    //debug UART, GPS softUART, BMP init
     Serial.begin(115200);
-    Serial.print(F("Initiating software serial..."));
-    #ifdef ESP32
-        ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
-    #else
-        ss.begin(GPSBaud);
-    #endif 
-    Serial.print(F(" Done.\nInitiating the BMP180..."));
-    pressure.begin();
-    Serial.println(F("      Done."));
 }
 
 void loop() {
@@ -91,11 +59,9 @@ void loop() {
 //---DATA ACQUISITION FUNCTIONS---
 
 void measurement(struct instrumentStructure *instrumentData) {
-    SPI.begin();
     Serial.print(F("Measuring sensors..."));
     data(instrumentData); //ADC data
     Serial.println(F("          Done."));
-    SPI.end();
 
     Serial.print(F("Reading the GPS module..."));
     GPS(instrumentData); //GPS data
@@ -167,7 +133,7 @@ void BMP(struct instrumentStructure *instrumentData) {
     instrumentData->bmp_alt = random(0, 550000)*0.01;
 }
 
-String data2csv(struct instrumentStructure *instrumentData) {
+void data2csv(struct instrumentStructure *instrumentData) {
     char data_CSV[110] = {0};
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
@@ -213,5 +179,4 @@ String data2csv(struct instrumentStructure *instrumentData) {
             pres_str,
             bmp_alt_str);
     Serial.println(data_CSV);
-    return data_CSV;
 }
