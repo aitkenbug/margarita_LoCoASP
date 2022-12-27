@@ -55,6 +55,7 @@ void setup() {
     pinMode(wakePin, INPUT);
     Wire.begin();
     Serial.begin(115200);
+    delay(1000);
 
     //Serial.println(F("Attaching servos"));
     //az_servo.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
@@ -161,15 +162,16 @@ void update_date_and_time() {
     //codigo mágico que pone en high la alarma
     //Revision precencia de alarma
     Serial.println(F("Alarm Check"));
-    delay(1000);
-
+    char datetime[24];
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
     second = (uint8_t)Clock.getSecond(); // Is it used?
     minute = (uint8_t)Clock.getMinute();
     hour = (uint8_t)Clock.getHour(fse, fse);
     day = (uint8_t)Clock.getDate();
     month = (uint8_t)Clock.getMonth(fse);
-    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used? 
+    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used?
+    snprintf(datetime, 24, "%u/%u/%u %u:%u:%u", year, month, day, hour, minute, second);
+    Serial.println(datetime);
 }
 
 void set_next_alarm(uint8_t minute) {
