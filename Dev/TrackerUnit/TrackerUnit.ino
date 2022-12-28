@@ -423,21 +423,6 @@ void track_the_sun(float azimuth, float elevation) {
     sleepNow();     // sleep function called here
 }
 
-bool found() {
-    int sensor0 = analogRead(A0);
-    delay(1);
-    int sensor1 = analogRead(A1);
-    delay(1);
-    int sensor2 = analogRead(A2);
-    delay(1);
-    int sensor3 = analogRead(A3);
-    delay(1);
-    // Comparamos entradas opuesta y desacoplamos las respuestas
-    // Basta que se cumpla una condición para que se justifique
-    // Se usa para la busqueda aproximada del sol
-    return abs(sensor0-sensor2)>=4||(abs(sensor1-sensor3)>=4);
-}
-
 int sec(int in) {
     return map(in, -45, 225, 500, 2500);   
 }
