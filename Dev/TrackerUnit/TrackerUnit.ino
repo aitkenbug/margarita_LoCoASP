@@ -177,8 +177,8 @@ void update_date_and_time() {
 void set_next_alarm(uint8_t minute) {
     Clock.checkIfAlarm(1);
     Clock.checkIfAlarm(2); //clears all alarm registers
-
-    Clock.setA1Time(byte(0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
+    uint8_t mult_of_five = int((minute + 4)/5) * 5;
+    Clock.setA1Time(byte(0), byte(0), byte((mult_of_five + 5) % 60), byte(0), 0b00001100, false, false, false);
     Clock.turnOnAlarm(1);
 
     Serial.print(F("Next alarm set: "));
