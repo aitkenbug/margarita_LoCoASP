@@ -164,12 +164,12 @@ void update_date_and_time() {
     Serial.println(F("Alarm Check"));
     char datetime[24];
     bool fse PROGMEM = false; //functions require bools to be passed as reference.
-    second = (uint8_t)Clock.getSecond(); // Is it used?
-    minute = (uint8_t)Clock.getMinute();
-    hour = (uint8_t)Clock.getHour(fse, fse);
-    day = (uint8_t)Clock.getDate();
-    month = (uint8_t)Clock.getMonth(fse);
-    year = (uint8_t)Clock.getYear(); //get current time  // Is the year used?
+    second = (uint8_t) Clock.getSecond(); // Is it used?
+    minute = (uint8_t) Clock.getMinute();
+    hour =   (uint8_t) Clock.getHour(fse, fse);
+    day =    (uint8_t) Clock.getDate();
+    month =  (uint8_t) Clock.getMonth(fse);
+    year =   (uint8_t) Clock.getYear(); //get current time  // Is the year used?
     snprintf(datetime, 24, "%u/%u/%u %u:%u:%u", year, month, day, hour, minute, second);
     Serial.println(datetime);
 }
@@ -234,7 +234,7 @@ void track_the_sun(float azimuth, float elevation) {
         correctaz = int(90 - azimuth);
         correctel = int(elevation);
     }
-    else if (((azimuth > 90) && (azimuth <= 180)) || ((azimuth > 180) and (azimuth < 270))) {
+    else if (((azimuth > 90) && (azimuth <= 180)) || ((azimuth > 180) && (azimuth < 270))) {
         correctaz = int(270 - azimuth);
         correctel = int(180 - elevation);
         factor_s = -1;
@@ -261,7 +261,7 @@ void track_the_sun(float azimuth, float elevation) {
 //********************************************************************************************************************************************
     // Iniciamos las conexiones de energia a los motores, arduino uno y shield M2M
     /*
-    pinMode(2, OUTPUT); //Pin de conexion con arduino uno
+    pinMode(2, OUTPUT); //n
     pinMode(4, OUTPUT);
     pinMode(5, OUTPUT);
     pinMode(6, OUTPUT);
@@ -293,8 +293,6 @@ void track_the_sun(float azimuth, float elevation) {
         bool test_found = false;
 
         convergencia = true;
-        //Serial.println(millis());
-        //Serial.println(tiempo+150000); 
         while(millis() < tiempo + 150000) {
             // Lectura de los sensores:
             sensor0 = analogRead(A0);
@@ -311,16 +309,7 @@ void track_the_sun(float azimuth, float elevation) {
             comb32 = sensor3 + sensor2;
             comb03 = sensor0 + sensor3;
             comb12 = sensor1 + sensor2;
-            /*
-            Serial.print(F("Sensor 0: "));
-            Serial.print(sensor0);
-            Serial.print(F("    Sensor 1: "));
-            Serial.print(sensor1);
-            Serial.print(F("    Sensor 2: "));
-            Serial.print(sensor2);
-            Serial.print(F("    Sensor 3: "));
-            Serial.println(sensor3);
-            */
+
             char buffer[100] = {0};
             sprintf(buffer, "Sensor 0: %d    Sensor 1: %d    Sensor2: %d    Sensor 3: %d", sensor0, sensor1, sensor2, sensor3);
             Serial.println(buffer);
@@ -368,16 +357,15 @@ void track_the_sun(float azimuth, float elevation) {
             hor0 = hor0 + x;
             ver0 = ver0 + y;
 
-            if ((hor0 >= 225) or (hor0 <= -45)) {
+            if ((hor0 >= hor+60) or (hor0 <= hor-60)) {
                 hor0 = hor;
             }
 
-            if ((ver0 >= 225) or (ver0 <= -45)) {
+            if ((ver0 >= ver+60) or (ver0 <= ver-60)) {
                 ver0 = ver;
             }
 
             if (suma >= 0) {
-            //if (suma >= 200)
                 if (convergencia) {
                     //señal arduino uno de medir A ESTA PARTE NO ACCEDE CUANDO SE HACEN PRUEBAS DE LABORATORIO
                     //LEA LA BIBLIA
@@ -421,21 +409,6 @@ void track_the_sun(float azimuth, float elevation) {
 //FIN CODIGO|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 //********************************************************************************************************************************************
     sleepNow();     // sleep function called here
-}
-
-bool found() {
-    int sensor0 = analogRead(A0);
-    delay(1);
-    int sensor1 = analogRead(A1);
-    delay(1);
-    int sensor2 = analogRead(A2);
-    delay(1);
-    int sensor3 = analogRead(A3);
-    delay(1);
-    // Comparamos entradas opuesta y desacoplamos las respuestas
-    // Basta que se cumpla una condición para que se justifique
-    // Se usa para la busqueda aproximada del sol
-    return abs(sensor0-sensor2)>=4||(abs(sensor1-sensor3)>=4);
 }
 
 int sec(int in) {

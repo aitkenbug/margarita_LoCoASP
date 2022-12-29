@@ -69,15 +69,14 @@ void loop() {
     struct instrumentStructure instrumentData;
     data(&instrumentData);
     data2csv(&instrumentData);
-    delay(500);
 }
 
 void data(struct instrumentStructure *instrumentData) {
     //Sensor data processing and collation.
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
-    unsigned long timeout = millis() + 30000;
-    while (digitalRead(trackerTrigger) && millis() < timeout) {
+    unsigned long timeout = millis() + 500;
+    while (millis() < timeout) {
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(0);
         if (instrumentData->led1 <= readvalue) {
