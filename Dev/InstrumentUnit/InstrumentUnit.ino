@@ -123,7 +123,7 @@ void data(struct instrumentStructure *instrumentData) {
     int readvalue = 0;
     //Sensor readout, keep highest value of each sensor.
     unsigned long timeout = millis() + 30000; //El tiempo de inicio para marcar
-    while (digitalRead(trackerTrigger) && millis() < timeout) {//Second check of trackerTrigger (?)
+    while (millis() < timeout) {//Second check of trackerTrigger (?)
         SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
         readvalue = read_ADC(0);
         if (instrumentData->led1 <= readvalue) {
