@@ -52,16 +52,11 @@ void setup() {
     digitalWrite(CS_ADC, HIGH); //turn off device
     Serial.begin(115200);
     Serial.println(F("Testing the structure..."));
-    for (int i=0; i < 5; i++) {
-        measurement(&instrumentData[0]);
-        data2csv(&instrumentData[0]);
-        measurement(&instrumentData[1]);
-        data2csv(&instrumentData[1]);
-        measurement(&instrumentData[2]);
-        data2csv(&instrumentData[2]);
-    }
+    measurement(&instrumentData[0]);
+    measurement(&instrumentData[1]);
+    measurement(&instrumentData[2]);
     Serial.println(F("Done."));
-    current_saved_data();
+    current_saved_data(save_data(instrumentData));
 }
 
 void loop() {//nothing happens here.
@@ -148,7 +143,7 @@ void BMP(struct instrumentStructure *instrumentData) {
     instrumentData->bmp_alt = random(0, 550000)*0.01;
 }
 
-void data2csv(struct instrumentStructure *instrumentData) {
+String data2csv(struct instrumentStructure *instrumentData) {
     char data_CSV[110] = {0};
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
@@ -193,17 +188,31 @@ void data2csv(struct instrumentStructure *instrumentData) {
             temp_str,
             pres_str,
             bmp_alt_str);
+    Serial.println(data_CSV);
+    return data_CSV;
+}
+
+char *save_data(struct instrumentStructure *instrumentData) {
     SPI.begin();
     Serial.print(F("Initiating the uSD card..."));
     SD.begin(CS_SD); //SD init
     Serial.println(F("    Done."));
     delay(100);
+    int data_year = instrumentData[0].gps_year - 2000*(instrumentData[0].gps_year > 0);
+    snprintf(filename, 20, "000/%d%d%d%d.csv", data_year,
+                                               instrumentData[0].gps_month,
+                                               instrumentData[0].gps_day,                                                                   
+                                               instrumentData[0].gps_hour);
+    Serial.println(filename);
 
     //---DATA STORAGE---
+    PORTD |= B00010000; // Turn off ADC
     File dataFile = SD.open(filename, FILE_WRITE);
     if (dataFile) { //check availability
         dataFile.seek(EOF);
-        dataFile.println(data_CSV);
+        dataFile.println(data2csv(&instrumentData[0]));
+        dataFile.println(data2csv(&instrumentData[1]));
+        dataFile.println(data2csv(&instrumentData[2]));
         Serial.println(F("Data saved successfully."));
     }
     else {
@@ -211,9 +220,10 @@ void data2csv(struct instrumentStructure *instrumentData) {
         Serial.println(filename);
     }
     dataFile.close();
+    return filename;
 }
 
-void current_saved_data() {
+void current_saved_data(char *filename) {
     Serial.println(F("\nCurrently saved data:\n"));
     File dataFile = SD.open(filename);
     if (dataFile) {

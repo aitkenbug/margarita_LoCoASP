@@ -71,8 +71,9 @@ void setup() {
         ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
     #else
         ss.begin(GPSBaud);
-    #endif 
-    Serial.print(F(" Done.\nInitiating the BMP180..."));
+    #endif
+    Serial.println(F(" Done."));
+    Serial.print(F("Initiating the BMP180..."));
     pressure.begin();
     Serial.println(F("      Done."));
 
@@ -82,8 +83,8 @@ void setup() {
         //WARN: isn't trackerTrigger being checked twice? here and on data() function. possible efficiency boost here.
     }
     measurement(&instrumentData[0]);
-    measurement(&instrumentData[1]);
-    measurement(&instrumentData[2]);
+    //measurement(&instrumentData[1]);
+    //measurement(&instrumentData[2]);
     current_saved_data(save_data(instrumentData));
 }
 
@@ -198,11 +199,11 @@ String data2csv(struct instrumentStructure *instrumentData) {
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
 
-    dtostrf(abs(instrumentData->gps_lat), 7, 4, lat_str);
+    dtostrf(abs(-instrumentData->gps_lat), 7, 4, lat_str);
     if (abs(instrumentData->gps_lng) >= 100.0)
         dtostrf(abs(instrumentData->gps_lng), 8, 4, lng_str);
     else
-        dtostrf(abs(instrumentData->gps_lng), 7, 4, lng_str);
+        dtostrf(abs(-instrumentData->gps_lng), 7, 4, lng_str);
     if (instrumentData->gps_alt >= 1000)
         dtostrf(instrumentData->gps_alt, 7, 2, gps_alt_str);
     else
