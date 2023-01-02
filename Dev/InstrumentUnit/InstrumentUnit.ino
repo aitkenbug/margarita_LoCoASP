@@ -13,7 +13,7 @@
 // Second generation developement by Benjamín Santelices, Vicente Aitken, José Ferrada and Matías Vidal
 // ------------------------------------------------------------------------------------------------------------------
 // INSTRUMENT.INO > Photometer Instrument Unit
-// Firmware for Instrument Unit - Arduino Uno
+// Firmware for Instrument Unit - Arduino Uno/ESP32
 
 
 //---LIBRARIES---
@@ -35,18 +35,18 @@
 #define CS_ADC 4         // ADC chip select.
 #define CS_SD 10         //SD chip select. Matches hardware SPI bus implementation on 328P.
 
-SFE_BMP180 pressure;     // BMP180 object
 TinyGPSPlus gps;         // GPS object.
+SFE_BMP180 pressure;     // BMP180 object
 
-char filename[20];
+char data_CSV[93] = {0};
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
     int led1 = 0;
     int led2 = 0;
     int led3 = 0;
     int led4 = 0;
-    double gps_lat = 0.0;
-    double gps_lng = 0.0;
+    float gps_lat = 0.0;
+    float gps_lng = 0.0;
     int gps_day = 0;
     int gps_month = 0;
     int gps_year = 0;
@@ -56,7 +56,7 @@ struct instrumentStructure {
     float gps_alt = 0.0;
     double bmp_temp = 0.0;
     double bmp_pres = 0.0;
-    double bmp_alt = 0.0;
+    float bmp_alt = 0.0;
 };
 
 void setup() {
@@ -74,8 +74,10 @@ void setup() {
     #endif
     Serial.println(F(" Done."));
     Serial.print(F("Initiating the BMP180..."));
-    pressure.begin();
-    Serial.println(F("      Done."));
+    if (pressure.begin())
+        Serial.println(F("      Done."));
+    else
+        Serial.println(F("      Error."));
 
     //---MEASURING STARTS HERE---
     while (digitalRead(trackerTrigger) == 0) {
@@ -83,9 +85,9 @@ void setup() {
         //WARN: isn't trackerTrigger being checked twice? here and on data() function. possible efficiency boost here.
     }
     measurement(&instrumentData[0]);
-    //measurement(&instrumentData[1]);
-    //measurement(&instrumentData[2]);
-    current_saved_data(save_data(instrumentData));
+    measurement(&instrumentData[1]);
+    measurement(&instrumentData[2]);
+    save_data(instrumentData);
 }
 
 void loop() {//nothing happens here.
@@ -148,15 +150,15 @@ void GPS(struct instrumentStructure *instrumentData) {
             if (gps.encode(ss.read())) {
                 if (gps.location.isValid()) {
 	            // isValid checks for the complete GPRMC frame.
-                    instrumentData->gps_lat = gps.location.lat();
-                    instrumentData->gps_lng = gps.location.lng();
+                    instrumentData->gps_lat = (float) gps.location.lat();
+                    instrumentData->gps_lng = (float) gps.location.lng();
                     instrumentData->gps_day = gps.date.day();
                     instrumentData->gps_month = gps.date.month();
                     instrumentData->gps_year = gps.date.year();
                     instrumentData->gps_hour = gps.time.hour();
                     instrumentData->gps_minute = gps.time.minute();
                     instrumentData->gps_second = gps.time.second();
-                    instrumentData->gps_alt = (float)gps.altitude.meters();
+                    instrumentData->gps_alt = (float) gps.altitude.meters();
 	            break;
                 }
             }
@@ -194,8 +196,7 @@ int read_ADC(int channel) {
     return adcValue;
 }
 
-String data2csv(struct instrumentStructure *instrumentData) {
-    char data_CSV[110] = {0};
+void data2csv(struct instrumentStructure *instrumentData) {
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
 
@@ -219,68 +220,72 @@ String data2csv(struct instrumentStructure *instrumentData) {
     else
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV,
-            "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
-            instrumentData->led1,
-            instrumentData->led2,
-            instrumentData->led3,
-            instrumentData->led4,
-            lat_str,
-            'S'-5*(instrumentData->gps_lat > 0),
-            lng_str,
-            'W'-18*(instrumentData->gps_lng > 0),
-            instrumentData->gps_day,
-            instrumentData->gps_month,
-            instrumentData->gps_year,
-            instrumentData->gps_hour,
-            instrumentData->gps_minute,
-            instrumentData->gps_second,
-            gps_alt_str,
-            temp_str,
-            pres_str,
-            bmp_alt_str);
+    snprintf(data_CSV, sizeof(data_CSV),
+             "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+             instrumentData->led1,
+             instrumentData->led2,
+             instrumentData->led3,
+             instrumentData->led4,
+             lat_str,
+             'S'-5*(instrumentData->gps_lat > 0),
+             lng_str,
+             'W'-18*(instrumentData->gps_lng > 0),
+             instrumentData->gps_day,
+             instrumentData->gps_month,
+             instrumentData->gps_year,
+             instrumentData->gps_hour,
+             instrumentData->gps_minute,
+             instrumentData->gps_second,
+             gps_alt_str,
+             temp_str,
+             pres_str,
+             bmp_alt_str);
     Serial.println(data_CSV);
-    return data_CSV;
 }
 
-char *save_data(struct instrumentStructure *instrumentData) {
+void save_data(struct instrumentStructure *instrumentData) {
+    char filename[18] = {0};
     SPI.begin();
     Serial.print(F("Initiating the uSD card..."));
-    SD.begin(CS_SD); //SD init
+    while(!SD.begin(CS_SD)) { //SD init
+        Serial.println("Card failed, or not present");
+        delay(100);
+    }
     Serial.println(F("    Done."));
-    delay(100);
     int data_year = instrumentData[0].gps_year - 2000*(instrumentData[0].gps_year > 0);
-    snprintf(filename, 20, "000/%d%d%d%d.csv", data_year,
-                                               instrumentData[0].gps_month,
-                                               instrumentData[0].gps_day,                                                                   
-                                               instrumentData[0].gps_hour);
+    snprintf(filename, sizeof(filename),
+             "000/%d%d%d%d.csv",
+             data_year,
+             instrumentData->gps_month,
+             instrumentData->gps_day,
+             instrumentData->gps_hour);
     Serial.println(filename);
 
     //---DATA STORAGE---
     PORTD |= B00010000; // Turn off ADC
     File dataFile = SD.open(filename, FILE_WRITE);
     if (dataFile) { //check availability
-        dataFile.seek(EOF);
-        dataFile.println(data2csv(&instrumentData[0]));
-        dataFile.println(data2csv(&instrumentData[1]));
-        dataFile.println(data2csv(&instrumentData[2]));
-        Serial.println(F("Data saved successfully."));
+        //dataFile.seek(EOF);
+        data2csv(&instrumentData[0]);
+        dataFile.println(data_CSV);
+        data2csv(&instrumentData[1]);
+        dataFile.println(data_CSV);
+        data2csv(&instrumentData[2]);
+        dataFile.println(data_CSV);
+        Serial.println(F("File opened successfully."));
+        dataFile.close();
     }
     else {
         Serial.print(F("Error saving to "));
         Serial.println(filename);
     }
-    dataFile.close();
-    return filename;
-}
-
-void current_saved_data(char *filename) {
     Serial.println(F("\nCurrently saved data:\n"));
-    File dataFile = SD.open(filename);
+    dataFile = SD.open(filename, FILE_READ);
     if (dataFile) {
         while (dataFile.available()) {
             Serial.write(dataFile.read());
         }
     }
     dataFile.close();
+    SPI.end();
 }
