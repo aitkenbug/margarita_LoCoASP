@@ -29,14 +29,15 @@
 
 TinyGPSPlus gps;               // GPS object.
 
+char data_CSV[93] = {0};
 static const PROGMEM uint32_t GPSBaud = 9600; // GPS software UART speed. To be hard-coded, as it does not change.
 struct instrumentStructure {
     int led1 = 0;
     int led2 = 0;
     int led3 = 0;
     int led4 = 0;
-    double gps_lat = 0.0;
-    double gps_lng = 0.0;
+    float gps_lat = 0.0;
+    float gps_lng = 0.0;
     int gps_day = 0;
     int gps_month = 0;
     int gps_year = 0;
@@ -46,13 +47,13 @@ struct instrumentStructure {
     float gps_alt = 0.0;
     double bmp_temp = 0.0;
     double bmp_pres = 0.0;
-    double bmp_alt = 0.0;
+    float bmp_alt = 0.0;
 };
 
 void setup() {
-    delay(1500);
-    Serial.begin(115200);
     struct instrumentStructure instrumentData;
+    Serial.begin(115200);
+    delay(1000);
     Serial.println(F("Initializing the GPS module..."));
     #ifdef ESP32
         ss.begin(GPSBaud,SWSERIAL_8N1,12,13,false,256);
@@ -62,7 +63,7 @@ void setup() {
     Serial.println(F("Done.\nTesting the code..."));
     for (int i=0; i < 10; i++) {
         GPS_sw_test(&instrumentData);
-        Serial.println(data2csv(&instrumentData));
+        data2csv(&instrumentData);
     }
     Serial.println(F("Done.\nTesting the GPS module..."));
 }
@@ -70,7 +71,7 @@ void setup() {
 void loop() {
     struct instrumentStructure instrumentData;
     GPS(&instrumentData);
-    Serial.println(data2csv(&instrumentData));
+    data2csv(&instrumentData);
     delay(500);
 }
 
@@ -110,16 +111,15 @@ void GPS(struct instrumentStructure *instrumentData) {
     }
 }
 
-String data2csv(struct instrumentStructure *instrumentData) {
-    char data_CSV[110] = {0};
+void data2csv(struct instrumentStructure *instrumentData) {
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
 
-    dtostrf(abs(instrumentData->gps_lat), 7, 4, lat_str);
+    dtostrf(abs(-instrumentData->gps_lat), 7, 4, lat_str);
     if (abs(instrumentData->gps_lng) >= 100.0)
         dtostrf(abs(instrumentData->gps_lng), 8, 4, lng_str);
     else
-        dtostrf(abs(instrumentData->gps_lng), 7, 4, lng_str);
+        dtostrf(abs(-instrumentData->gps_lng), 7, 4, lng_str);
     if (instrumentData->gps_alt >= 1000)
         dtostrf(instrumentData->gps_alt, 7, 2, gps_alt_str);
     else
@@ -135,25 +135,25 @@ String data2csv(struct instrumentStructure *instrumentData) {
     else
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV,
-            "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
-            instrumentData->led1,
-            instrumentData->led2,
-            instrumentData->led3,
-            instrumentData->led4,
-            lat_str,
-            'S'-5*(instrumentData->gps_lat > 0),
-            lng_str,
-            'W'-18*(instrumentData->gps_lng > 0),
-            instrumentData->gps_day,
-            instrumentData->gps_month,
-            instrumentData->gps_year,
-            instrumentData->gps_hour,
-            instrumentData->gps_minute,
-            instrumentData->gps_second,
-            gps_alt_str,
-            temp_str,
-            pres_str,
-            bmp_alt_str);
-    return data_CSV;
+    snprintf(data_CSV, sizeof(data_CSV),
+             "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+             instrumentData->led1,
+             instrumentData->led2,
+             instrumentData->led3,
+             instrumentData->led4,
+             lat_str,
+             'S'-5*(instrumentData->gps_lat > 0),
+             lng_str,
+             'W'-18*(instrumentData->gps_lng > 0),
+             instrumentData->gps_day,
+             instrumentData->gps_month,
+             instrumentData->gps_year,
+             instrumentData->gps_hour,
+             instrumentData->gps_minute,
+             instrumentData->gps_second,
+             gps_alt_str,
+             temp_str,
+             pres_str,
+             bmp_alt_str);
+    Serial.println(data_CSV);
 }
