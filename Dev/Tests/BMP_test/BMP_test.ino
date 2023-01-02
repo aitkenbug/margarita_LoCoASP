@@ -22,13 +22,14 @@
 
 SFE_BMP180 pressure; // BMP180 object
 
+char data_CSV[93] = {0};
 struct instrumentStructure {
     int led1 = 0;
     int led2 = 0;
     int led3 = 0;
     int led4 = 0;
-    double gps_lat = 0.0;
-    double gps_lng = 0.0;
+    float gps_lat = 0.0;
+    float gps_lng = 0.0;
     int gps_day = 0;
     int gps_month = 0;
     int gps_year = 0;
@@ -38,29 +39,31 @@ struct instrumentStructure {
     float gps_alt = 0.0;
     double bmp_temp = 0.0;
     double bmp_pres = 0.0;
-    double bmp_alt = 0.0;
+    float bmp_alt = 0.0;
 };
 
 void setup() {
-    delay(1000);
     struct instrumentStructure instrumentData;
     Serial.begin(115200);
+    delay(1000);
     Serial.println(F("Starting the software test..."));
     for (int i=0; i < 10; i++) {
         BMP_test(&instrumentData);
-        Serial.println(data2csv(&instrumentData));
+        data2csv(&instrumentData);
     }
     Serial.println(F("Done."));
     Serial.println(F("Initializing the BMP180 pressure sensor..."));
-    pressure.begin();
-    Serial.println(F("Done."));
+    if (pressure.begin())
+        Serial.println(F("      Done."));
+    else
+        Serial.println(F("      Error."));
     Serial.println(F("Testing the BMP180 module..."));
 }
 
 void loop() {
     struct instrumentStructure instrumentData;
     BMP(&instrumentData);
-    Serial.println(data2csv(&instrumentData));
+    data2csv(&instrumentData);
     delay(500);
 }
 
@@ -81,7 +84,6 @@ void BMP(struct instrumentStructure *instrumentData) {
 }
 
 void BMP_test(struct instrumentStructure *instrumentData) {
-    //BMP180 data gathering. IC out of production, would be wise to replace.
     uint8_t wait = 0;
     wait = random(0,300);
     delay(wait);
@@ -94,16 +96,15 @@ void BMP_test(struct instrumentStructure *instrumentData) {
     instrumentData->bmp_alt = random(0, 550000)*0.01;
 }
 
-String data2csv(struct instrumentStructure *instrumentData) {
-    char data_CSV[110] = {0};
+void data2csv(struct instrumentStructure *instrumentData) {
     char lat_str[8], lng_str[8], gps_alt_str[8];
     char temp_str[6], pres_str[7], bmp_alt_str[8];
 
-    dtostrf(abs(instrumentData->gps_lat), 7, 4, lat_str);
+    dtostrf(abs(-instrumentData->gps_lat), 7, 4, lat_str);
     if (abs(instrumentData->gps_lng) >= 100.0)
         dtostrf(abs(instrumentData->gps_lng), 8, 4, lng_str);
     else
-        dtostrf(abs(instrumentData->gps_lng), 7, 4, lng_str);
+        dtostrf(abs(-instrumentData->gps_lng), 7, 4, lng_str);
     if (instrumentData->gps_alt >= 1000)
         dtostrf(instrumentData->gps_alt, 7, 2, gps_alt_str);
     else
@@ -119,23 +120,25 @@ String data2csv(struct instrumentStructure *instrumentData) {
     else
         dtostrf(instrumentData->bmp_alt, 6, 2, bmp_alt_str);
 
-    sprintf(data_CSV, "007,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s", instrumentData->led1,
-                                                                                   instrumentData->led2,
-                                                                                   instrumentData->led3,
-                                                                                   instrumentData->led4,
-                                                                                   lat_str,
-                                                                                   'S'-5*(instrumentData->gps_lat > 0),
-                                                                                   lng_str,
-                                                                                   'W'-18*(instrumentData->gps_lng > 0),
-                                                                                   instrumentData->gps_day,
-                                                                                   instrumentData->gps_month,
-                                                                                   instrumentData->gps_year,
-                                                                                   instrumentData->gps_hour,
-                                                                                   instrumentData->gps_minute,
-                                                                                   instrumentData->gps_second,
-                                                                                   gps_alt_str,
-                                                                                   temp_str,
-                                                                                   pres_str,
-                                                                                   bmp_alt_str);
-    return data_CSV;
+    snprintf(data_CSV, sizeof(data_CSV),
+             "000,%d,%d,%d,%d,%s,%c,%s,%c,%d,%d,%d,%d,%d,%d,%s,%s,%s,%s",
+             instrumentData->led1,
+             instrumentData->led2,
+             instrumentData->led3,
+             instrumentData->led4,
+             lat_str,
+             'S'-5*(instrumentData->gps_lat > 0),
+             lng_str,
+             'W'-18*(instrumentData->gps_lng > 0),
+             instrumentData->gps_day,
+             instrumentData->gps_month,
+             instrumentData->gps_year,
+             instrumentData->gps_hour,
+             instrumentData->gps_minute,
+             instrumentData->gps_second,
+             gps_alt_str,
+             temp_str,
+             pres_str,
+             bmp_alt_str);
+    Serial.println(data_CSV);
 }
