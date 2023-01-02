@@ -252,13 +252,12 @@ void save_data(struct instrumentStructure *instrumentData) {
         delay(100);
     }
     Serial.println(F("    Done."));
-    int data_year = instrumentData[0].gps_year - 2000*(instrumentData[0].gps_year > 0);
     snprintf(filename, sizeof(filename),
              "000/%d%d%d%d.csv",
-             data_year,
-             instrumentData->gps_month,
-             instrumentData->gps_day,
-             instrumentData->gps_hour);
+             instrumentData[2].gps_year - 2000*(instrumentData[2].gps_year > 0),
+             instrumentData[2].gps_month,
+             instrumentData[2].gps_day,
+             instrumentData[2].gps_hour);
     Serial.println(filename);
 
     //---DATA STORAGE---
