@@ -95,15 +95,15 @@ void GPS(struct instrumentStructure *instrumentData) {
             if (gps.encode(ss.read())) {
                 if (gps.location.isValid()) {
                     // isValid checks for the complete GPRMC frame.
-                    instrumentData->gps_lat = gps.location.lat();
-                    instrumentData->gps_lng = gps.location.lng();
+                    instrumentData->gps_lat = (float) gps.location.lat();
+                    instrumentData->gps_lng = (float) gps.location.lng();
                     instrumentData->gps_day = gps.date.day();
                     instrumentData->gps_month = gps.date.month();
                     instrumentData->gps_year = gps.date.year();
                     instrumentData->gps_hour = gps.time.hour();
                     instrumentData->gps_minute = gps.time.minute();
                     instrumentData->gps_second = gps.time.second();
-                    instrumentData->gps_alt = (float)gps.altitude.meters();
+                    instrumentData->gps_alt = (float) gps.altitude.meters();
                     break;
                 }
             }
