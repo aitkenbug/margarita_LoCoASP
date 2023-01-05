@@ -144,7 +144,7 @@ void data(struct instrumentStructure *instrumentData) {
 
 void GPS(struct instrumentStructure *instrumentData) {
     //GPS data parsing and collation, hugely inneficient. To be replaced by straight NMEA communication.
-    unsigned long timeout = millis() + 20000; //El tiempo de inicio para marcar
+    unsigned long timeout = millis() + 5000; //El tiempo de inicio para marcar
     while (millis() < timeout) {
         while (ss.available() > 0) {
             if (gps.encode(ss.read())) {
