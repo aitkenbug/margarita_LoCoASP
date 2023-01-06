@@ -35,7 +35,6 @@ uint8_t second = 0, minute = 0, hour = 0,
 int wakePin = 2;                 // pin used for waking up
 int sleepStatus = 0;             // variable to store a request for sleep
 
-unsigned long tiempo = 0;
 bool convergencia = true;
 float tupper_lat = -33.458017, tupper_lng = -70.661989;
 struct coordinates {
@@ -177,8 +176,8 @@ void update_date_and_time() {
 void set_next_alarm(uint8_t minute) {
     Clock.checkIfAlarm(1);
     Clock.checkIfAlarm(2); //clears all alarm registers
-
-    Clock.setA1Time(byte(0), byte(0), byte((minute + 5) % 60), byte(0), 0b00001100, false, false, false);
+    uint8_t mult_of_five = int((minute + 4)/5) * 5;
+    Clock.setA1Time(byte(0), byte(0), byte((mult_of_five + 5) % 60), byte(0), 0b00001100, false, false, false);
     Clock.turnOnAlarm(1);
 
     Serial.print(F("Next alarm set: "));
@@ -225,6 +224,7 @@ void track_the_sun(float azimuth, float elevation) {
     int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
     int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
     int hor = 0, ver = 0, hor0 = 0, ver0 = 0;
+    unsigned long timeout = 0;
 
     Serial.println(F("Attaching servos"));
     az_servo.attach(9); //Inicializamos los motores (1 horizontal / 2 vertical)
@@ -287,13 +287,13 @@ void track_the_sun(float azimuth, float elevation) {
         PORTB |= B00100001;
         x0 = 1; // Inicializamos el elemento derivativo
         y0 = 1;
-        tiempo = millis();
+        timeout = millis() + 150000;
         Serial.println(F("Starting Tracker"));
 
         bool test_found = false;
 
         convergencia = true;
-        while(millis() < tiempo + 150000) {
+        while(millis() < timeout) {
             // Lectura de los sensores:
             sensor0 = analogRead(A0);
             delay(1);
@@ -391,7 +391,7 @@ void track_the_sun(float azimuth, float elevation) {
         digitalWrite(4, LOW);
         //informamos al arduino UNO que termina la medición
         digitalWrite(2, LOW);
-        delay(35000);
+        delay(30000);
         //pinMode(2,INPUT);
         digitalWrite(7, LOW);
     }
@@ -399,11 +399,6 @@ void track_the_sun(float azimuth, float elevation) {
     //Serial.println("OK");
     delay(1000);
     //esperamos que arduino UNO termine su transferencia
-    // SEGMENTO DESACTIVADO PARA PRUEBAS
-    //if (digitalRead(2)==0)
-    //while(digitalRead(2)==0)
-    //{
-    //}
     //Apagamos arduino Uno y M2M
 //********************************************************************************************************************************************
 //FIN CODIGO|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||

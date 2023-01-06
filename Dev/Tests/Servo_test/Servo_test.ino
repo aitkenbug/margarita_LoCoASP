@@ -52,7 +52,7 @@ void setup() {
         Serial.println(el_angles[i]);
         delay(1000);
     }
-    track_the_sun(90, 90);
+    track_the_sun(0, 90);
     delay(2000);
     az_servo.detach();
     el_servo.detach();
@@ -90,5 +90,8 @@ void track_the_sun(float azimuth, float elevation) {
 }
 
 int sec(int in) {
-    return map(in, -45, 225, 500, 2500);   
+    int map_value = map(in, -45, 225, 500, 2500);
+    Serial.print("Map value: ");
+    Serial.println(map_value);
+    return map_value;
 }
