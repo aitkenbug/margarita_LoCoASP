@@ -35,7 +35,6 @@ uint8_t second = 0, minute = 0, hour = 0,
 int wakePin = 2;                 // pin used for waking up
 int sleepStatus = 0;             // variable to store a request for sleep
 
-bool convergencia = true;
 float tupper_lat = -33.458017, tupper_lng = -70.661989;
 struct coordinates {
    float azimuth;
@@ -153,7 +152,9 @@ void loop() {
     struct coordinates sun;
     sun = get_sun_position(tupper_lat, tupper_lng, month, day, hour, minute);
     //END OF THE CODE THAT CALCULATES THE POSITION OF THE SUN
-    track_the_sun(sun.azimuth, sun.elevation);
+    if (sun.elevation > 7)
+        track_the_sun(sun.azimuth, sun.elevation);
+    sleepNow();
 }
 
 void update_date_and_time() {
@@ -221,8 +222,8 @@ void track_the_sun(float azimuth, float elevation) {
     int sensor0 = 0, sensor1 = 0, sensor2 = 0, sensor3 = 0;
     int suma = 0, comb01 = 0, comb32 = 0, comb03 = 0, comb12 = 0;
     int factor_s = 1;
-    int x = 0, x0 = 0, x1 = 0, x2 = 0, x3 = 0;
-    int y = 0, y0 = 0, y1 = 0, y2 = 0, y3 = 0;
+    int x = 0, x0 = 1, x1 = 0, x2 = 0, x3 = 0; // Inicializamos el elemento derivativo
+    int y = 0, y0 = 1, y1 = 0, y2 = 0, y3 = 0;
     int hor = 0, ver = 0, hor0 = 0, ver0 = 0;
     unsigned long timeout = 0;
 
@@ -256,154 +257,116 @@ void track_the_sun(float azimuth, float elevation) {
     Serial.println(ver0);
 
     Serial.println(F("Starting Peripherals"));
-//********************************************************************************************************************************************
-//CODIGO DEL SEGUIDOR AQUI
-//********************************************************************************************************************************************
     // Iniciamos las conexiones de energia a los motores, arduino uno y shield M2M
-    /*
-    pinMode(2, OUTPUT); //n
-    pinMode(4, OUTPUT);
-    pinMode(5, OUTPUT);
-    pinMode(6, OUTPUT);
-    pinMode(7, OUTPUT);
-    pinMode(8, OUTPUT);
-    pinMode(13, OUTPUT);
-    */
-    DDRD |= B11110100; // Sets Ports 2, 4, 5, 6 and 7 as OUTPUT.
-    DDRB |= B00100001; // Sets Ports 8 and 13 as OUTPUT.
+    DDRD |= B11110100;  // Sets Ports 2, 4, 5, 6 and 7 as OUTPUT.
+    DDRB |= B00100001;  // Sets Ports 8 and 13 as OUTPUT.
+    PORTD |= B11110000; // Sets Ports 4, 5, 6, and 7 in HIGH
+    PORTB |= B00100001; // Sets Ports 8 and 13 in HIGH
+    timeout = millis() + 150000;
+    Serial.println(F("Starting Tracker"));
 
-    Serial.println(elevation);
+    while(millis() < timeout) {
+        // Lectura de los sensores:
+        sensor0 = analogRead(A0);
+        delay(1);
+        sensor1 = analogRead(A1);
+        delay(1);
+        sensor2 = analogRead(A2);
+        delay(1);
+        sensor3 = analogRead(A3);
+        delay(1);
 
-    if (elevation >= 7) {
-        /*
-        digitalWrite(4, HIGH); // Desconexion Motores
-        digitalWrite(5, HIGH); // Motor 1
-        digitalWrite(6, HIGH); // Motor 2
-        digitalWrite(7, HIGH); // Desconexion arduino UNO y M2M
-        digitalWrite(8, HIGH); // Arduino UNO
-        digitalWrite(13,HIGH); // M2M shield
-        */
-        PORTD |= B11110000;
-        PORTB |= B00100001;
-        x0 = 1; // Inicializamos el elemento derivativo
-        y0 = 1;
-        timeout = millis() + 150000;
-        Serial.println(F("Starting Tracker"));
+        suma = sensor0 + sensor1 + sensor2 + sensor3;
+        comb01 = sensor0 + sensor1;
+        comb32 = sensor3 + sensor2;
+        comb03 = sensor0 + sensor3;
+        comb12 = sensor1 + sensor2;
 
-        bool test_found = false;
+        char buffer[100] = {0};
+        sprintf(buffer, "Sensor 0: %d    Sensor 1: %d    Sensor2: %d    Sensor 3: %d", sensor0, sensor1, sensor2, sensor3);
+        Serial.println(buffer);
 
-        convergencia = true;
-        while(millis() < timeout) {
-            // Lectura de los sensores:
-            sensor0 = analogRead(A0);
-            delay(1);
-            sensor1 = analogRead(A1);
-            delay(1);
-            sensor2 = analogRead(A2);
-            delay(1);
-            sensor3 = analogRead(A3);
-            delay(1);
-
-            suma = sensor0 + sensor1 + sensor2 + sensor3;
-            comb01 = sensor0 + sensor1;
-            comb32 = sensor3 + sensor2;
-            comb03 = sensor0 + sensor3;
-            comb12 = sensor1 + sensor2;
-
-            char buffer[100] = {0};
-            sprintf(buffer, "Sensor 0: %d    Sensor 1: %d    Sensor2: %d    Sensor 3: %d", sensor0, sensor1, sensor2, sensor3);
-            Serial.println(buffer);
-
-            // Comparamos entradas opuesta y desacoplamos las respuestas
-            if (sensor0 >= sensor2) {
-                x1 = -factor_s;
-                y1 = 1;
-            }
-            else {
-                x1 = factor_s;
-                y1 = -1;
-            }
-
-            if (sensor1 >= sensor3) {
-                x2 = factor_s;
-                y2 = 1;
-            }
-            else {
-                x2 = -factor_s;
-                y2 = -1;
-            }
-
-            if (comb01 >= comb32) {
-                y3 = 1;
-            }
-            else {
-                y3 = -1;
-            }
-
-            if (comb03 >= comb12){x3 = -factor_s;}
-            else{x3 = factor_s;}
-
-            x = x1 + x2 + x3;
-            y = y1 + y2 + y3;
-            //Agregamos el elemento integral para evitar el error en estado estaiconario
-     
-            if (x == 0){x = x0;}else{x0 = x;}
-            if (y == 0){y = y0;}else{y0 = y;}
-
-            // Eliminamos cuando el valor es de 2
-            x = 2*(x > 0) - 1;// Original: x/abs(x);
-            y = 2*(y > 0) - 1;// Original: y/abs(y);
-
-            hor0 = hor0 + x;
-            ver0 = ver0 + y;
-
-            if ((hor0 >= hor+60) or (hor0 <= hor-60)) {
-                hor0 = hor;
-            }
-
-            if ((ver0 >= ver+60) or (ver0 <= ver-60)) {
-                ver0 = ver;
-            }
-
-            if (suma >= 0) {
-                if (convergencia) {
-                    //señal arduino uno de medir A ESTA PARTE NO ACCEDE CUANDO SE HACEN PRUEBAS DE LABORATORIO
-                    //LEA LA BIBLIA
-                    digitalWrite(2, HIGH); 
-                    convergencia = false; 
-                }
-            }
-            //Ejecutamos el seguimiento
-            //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
-            el_servo.writeMicroseconds(sec(ver0));
-            az_servo.writeMicroseconds(sec(hor0));
-            delay(20);
-            // waits for the servo to get there
+        // Comparamos entradas opuesta y desacoplamos las respuestas
+        if (sensor0 >= sensor2) {
+            x1 = -factor_s;
+            y1 = 1;
         }
-        // Ramp-down
-        az_servo.writeMicroseconds(sec(00));
-        el_servo.write(180);
-        delay(5000);
+        else {
+            x1 = factor_s;
+            y1 = -1;
+        }
 
-        az_servo.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
-        el_servo.detach();
-        // Apagamos la energia de los motores
-        digitalWrite(4, LOW);
-        //informamos al arduino UNO que termina la medición
-        digitalWrite(2, LOW);
-        delay(30000);
-        //pinMode(2,INPUT);
-        digitalWrite(7, LOW);
+        if (sensor1 >= sensor3) {
+            x2 = factor_s;
+            y2 = 1;
+        }
+        else {
+            x2 = -factor_s;
+            y2 = -1;
+        }
+
+        if (comb01 >= comb32) {
+            y3 = 1;
+        }
+        else {
+            y3 = -1;
+        }
+
+        if (comb03 >= comb12){x3 = -factor_s;}
+        else{x3 = factor_s;}
+
+        x = x1 + x2 + x3;
+        y = y1 + y2 + y3;
+        //Agregamos el elemento integral para evitar el error en estado estaiconario
+     
+        if (x == 0){x = x0;}else{x0 = x;}
+        if (y == 0){y = y0;}else{y0 = y;}
+
+        // Eliminamos cuando el valor es de 2
+        x = 2*(x > 0) - 1;// Original: x/abs(x);
+        y = 2*(y > 0) - 1;// Original: y/abs(y);
+
+        hor0 = hor0 + x;
+        ver0 = ver0 + y;
+
+        if ((hor0 >= hor+60) or (hor0 <= hor-60)) {
+            hor0 = hor;
+        }
+
+        if ((ver0 >= ver+60) or (ver0 <= ver-60)) {
+            ver0 = ver;
+        }
+
+        if (suma >= 0) {
+            //señal arduino uno de medir A ESTA PARTE NO ACCEDE CUANDO SE HACEN PRUEBAS DE LABORATORIO
+            //LEA LA BIBLIA
+            digitalWrite(2, HIGH);
+        }
+        //Ejecutamos el seguimiento
+        //PARTE IMPORTANTE PARA REGULAR LAS VELOCIDADES
+        el_servo.writeMicroseconds(sec(ver0));
+        az_servo.writeMicroseconds(sec(hor0));
+        delay(20);
+        // waits for the servo to get there
     }
+    // Ramp-down
+    az_servo.writeMicroseconds(sec(00));
+    el_servo.write(180);
+    delay(5000);
+
+    az_servo.detach(); //Inicializamos los motores (1 horizontal / 2 vertical)
+    el_servo.detach();
+    // Apagamos la energia de los motores
+    digitalWrite(4, LOW);
+    //informamos al arduino UNO que termina la medición
+    digitalWrite(2, LOW);
+    delay(30000);
+    //pinMode(2,INPUT);
+    digitalWrite(7, LOW);
     Serial.println(F("Tracking Completed"));
-    //Serial.println("OK");
     delay(1000);
     //esperamos que arduino UNO termine su transferencia
     //Apagamos arduino Uno y M2M
-//********************************************************************************************************************************************
-//FIN CODIGO|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-//********************************************************************************************************************************************
-    sleepNow();     // sleep function called here
 }
 
 int sec(int in) {
